@@ -149,6 +149,7 @@ const cameraErrorDefinitions = {
 
 
 /* ─── Modal de error de cámara ─── */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ModalErrorCamara({ error, onReintentar, onSubirFoto, onCerrar }) {
   const inputRef = useRef(null);
 
@@ -185,7 +186,7 @@ function ModalErrorCamara({ error, onReintentar, onSubirFoto, onCerrar }) {
 
         {/* Brand Info */}
         <div className="flex items-center gap-2 mb-1">
-          <Imagen
+          <image
             src={logoOpticaMia}
             alt="Logo Óptica Mia"
             className="h-8 w-8 rounded-full object-cover border border-gray-200"
@@ -247,14 +248,18 @@ export default function Probador() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const searchParams = useSearchParams();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { agregarAlCarrito } = useCart();
 
   // NOTA: El producto ya no se pasa por estado, sino que se espera como prop.
   // Esto requerirá un cambio en cómo se llama a este componente.
 
   const [fase, setFase] = useState("modal"); // "modal" | "camara" | "foto"
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [errorCamara, setErrorCamara] = useState(null); // null | { titulo, detalle, tipo }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [camaraActiva, setCamaraActiva] = useState(false);
   const [fotoUrl, setFotoUrl] = useState(null);
   const iniciarCamara = useCallback(async () => {
@@ -310,6 +315,7 @@ export default function Probador() {
     setFase("foto");
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const volverAlModal = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;

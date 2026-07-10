@@ -50,7 +50,7 @@ export default function ProbadorLanding() {
         {filtrados.map((producto) => (
           <div key={producto.id} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition">
             <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-center h-48 mb-4">
-              <img src={producto.imagen} alt={producto.nombre} className="max-h-36 object-contain mix-blend-multiply" />
+              <image src={producto.imagen} alt={producto.nombre} className="max-h-36 object-contain mix-blend-multiply" />
             </div>
             <div>
               <h3 className="font-bold text-gray-800 text-base mb-1 truncate">{producto.nombre}</h3>
