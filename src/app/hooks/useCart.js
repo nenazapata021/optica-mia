@@ -1,1 +1,1 @@
-export { CartContext, useCart, CartProvider } from '../context/CartContext.jsx';
+export { CartContextType, useCart, CartProvider } from '../context/CartContext.jsx';

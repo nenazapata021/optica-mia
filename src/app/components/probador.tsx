@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { useCart } from "../context/CartContext.jsx";
+import { useCart } from "../context/CartContextType.js";
 import logoOpticaMia from "../assets/optica-mia.jpg";
 import ProductoDestacado from "./ProductoDestacado.jsx";
 import foto1 from '../assets/foto1.jpg';

@@ -1,9 +1,26 @@
+"use client";
+
 import logoNequi from '../assets/logo de nequi.jpg';
 import logoAddi from '../assets/logo de Addi.jpg';
 import logoSistecredito from '../assets/logo de sistecredito.png';
-import Image from 'next/image';
+import Image, { type StaticImageData } from 'next/image';
 
-const servicios = [
+interface ServicioItemLogo {
+  texto: string;
+  logo: StaticImageData;
+  alt: string;
+  size: number;
+}
+
+type ServicioItem = string | ServicioItemLogo;
+
+interface Servicio {
+  titulo: string;
+  descripcion: string | null;
+  items: ServicioItem[] | null;
+}
+
+const servicios: Servicio[] = [
   {
     titulo: 'Monturas en tendencia',
     descripcion: 'Diseños modernos, cómodos y de alta calidad.',
@@ -40,7 +57,7 @@ export default function Servicios() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
-          {servicios.map((servicio) => (
+          {servicios.map((servicio: Servicio) => (
             <article
               key={servicio.titulo}
               className="group rounded-2xl border border-[#C39C4E]/30 bg-[#006d7a]/60 p-7 shadow-lg transition-transform duration-300 hover:scale-105 hover:border-[#C39C4E] hover:bg-[#006d7a] hover:shadow-[#C39C4E]/10"
@@ -61,31 +78,28 @@ export default function Servicios() {
 
               {servicio.items && (
                 <ul className="mt-4 space-y-2">
-                  {servicio.items.map((item) => {
-                    const texto = typeof item === 'string' ? item : item.texto;
-                    const logo = typeof item === 'string' ? null : item.logo;
-
-                    return (
-                      <li
-                        key={texto}
-                        className="flex items-center gap-3 text-blue-50/90"
-                      >
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C39C4E]" />
+                  {servicio.items.map((item: ServicioItem) => (
+                    <li
+                      key={typeof item === 'string' ? item : item.texto}
+                      className="flex items-center gap-3 text-blue-50/90"
+                    >
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C39C4E]" />
+                      {typeof item === 'string' ? (
+                        <span>{item}</span>
+                      ) : (
                         <span className="flex flex-1 items-center gap-2">
-                          {texto}
-                          {logo && (
+                          {item.texto}
                             <Image
-                              src={logo}
+                              src={item.logo}
                               alt={item.alt}
                               width={item.size}
                               height={item.size} 
                               className="inline-block rounded-md transition-transform duration-300 group-hover:scale-110"
                             />
-                          )}
                         </span>
-                      </li>
-                    );
-                  })}
+                      )}
+                    </li>
+                  ))}
                 </ul>
               )}
             </article>

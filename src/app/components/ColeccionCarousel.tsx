@@ -2,11 +2,17 @@ import React from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import Image from 'next/image';
+import { type Producto } from '../types/producto';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
 
-export default function ColeccionCarousel({ productos, onSelectProduct }) {
+interface ColeccionCarouselProps {
+  productos: Producto[];
+  onSelectProduct: (producto: Producto) => void;
+}
+
+export default function ColeccionCarousel({ productos, onSelectProduct }: ColeccionCarouselProps) {
   return (
     <div className="w-full px-12 relative">
       <Swiper
@@ -34,10 +40,10 @@ export default function ColeccionCarousel({ productos, onSelectProduct }) {
           <SwiperSlide key={producto.id} onClick={() => onSelectProduct(producto)} className="cursor-pointer group">
             <div className="hover-scale bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
               <div className="img-zoom-wrap h-32">
-                <Image src={producto.imagen} alt={producto.nombre} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                <Image src={Array.isArray(producto.image) ? producto.image[0] : producto.image} alt={producto.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
               </div>
               <div className="p-3">
-                <h4 className="font-semibold text-gray-800 text-sm truncate">{producto.nombre}</h4>
+                <h4 className="font-semibold text-gray-800 text-sm truncate">{producto.name}</h4>
                 <p className="text-xs text-gray-500">{producto.categoria}</p>
               </div>
             </div>

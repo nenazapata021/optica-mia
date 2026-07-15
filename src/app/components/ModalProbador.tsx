@@ -1,10 +1,17 @@
 "use client";
 
+import { type MouseEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Camera, Upload, X } from "lucide-react";
+import { type Producto } from "../types/producto";
 
-export default function ModalProbador({ producto, onClose }) {
+interface ModalProbadorProps {
+  producto: Producto;
+  onClose: () => void;
+}
+
+export default function ModalProbador({ producto, onClose }: ModalProbadorProps) {
   const router = useRouter();
 
   const handleNavigation = () => {
@@ -13,7 +20,7 @@ export default function ModalProbador({ producto, onClose }) {
   };
 
   // Evita que el clic dentro del modal lo cierre
-  const handleModalContentClick = (e) => {
+  const handleModalContentClick = (e: MouseEvent) => {
     e.stopPropagation();
   };
 
@@ -42,18 +49,18 @@ export default function ModalProbador({ producto, onClose }) {
         </p>
 
         {/* Información de la montura */}
-        <div className="flex items-center gap-4 bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-8">
-          <div className="relative w-20 h-20 rounded-lg overflow-hidden [flex-shrink-0]">
+        <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 mb-8">
+          <div className="relative h-20 w-20 [flex-shrink-0] overflow-hidden rounded-lg">
             <Image
-              src={Array.isArray(producto.imagen) ? producto.imagen[0] : producto.imagen}
-              alt={producto.nombre}
+              src={Array.isArray(producto.image) ? producto.image[0] : producto.image}
+              alt={producto.name}
               fill
               className="object-contain"
             />
           </div>
           <div className="text-left">
             <p className="text-sm text-slate-500">Montura seleccionada</p>
-            <h3 className="font-bold text-lg text-slate-800">{producto.nombre}</h3>
+            <h3 className="text-lg font-bold text-slate-800">{producto.name}</h3>
           </div>
         </div>
 

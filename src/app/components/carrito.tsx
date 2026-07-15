@@ -1,6 +1,6 @@
-import CarritoCompoenets from "../components/carrito"; 
+import CarritoCompoenets from "./carrito"; 
 
-export const CarritoCompoenets = {
+export const Carrito = {
   title: "Tu Carrito de Compras - Óptica Mia",
 };
 

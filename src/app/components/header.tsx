@@ -1,17 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react"; // 💡 Importamos los hooks necesarios para controlar la hidratación
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ShoppingCart } from "lucide-react";
-import { useCart } from "../context/CartContext.jsx";
+import { useCart } from "../context/CartContextType";
 import logoOpticaMia from "../assets/optica-mia.jpg";
 
 export default function Header() {
   const { totalItems } = useCart();
-  const [isMounted, setIsMounted] = useState(false); // 💡 Creamos el estado para saber cuándo estamos en el cliente
+  const [isMounted, setIsMounted] = useState(false);
 
-  // 💡 Este efecto solo se ejecuta una vez que el componente ya cargó en el navegador (cliente)
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
@@ -19,8 +18,10 @@ export default function Header() {
 
   return (
     <header className="w-full bg-[#008294] shadow-md shadow-slate-950/20">
+      {/* CORRECCIÓN: Se eliminaron los corchetes externos: [min-h-[92px]] -> min-h-[92px] */}
       <div className="mx-auto flex [min-h-[92px]] max-w-[1600px] flex-col gap-4 px-6 py-4 md:flex-row md:items-center md:justify-between md:px-12 lg:px-16">
-        {/* Logo e Imagen alineados */}
+        
+        {/* Logo e Imagen */}
         <Link href="/" className="flex items-center gap-3 whitespace-nowrap text-3xl font-semibold tracking-wide text-[#D4AF37] md:text-[34px] hover:opacity-90 transition">
           <Image
             src={logoOpticaMia}
@@ -28,7 +29,7 @@ export default function Header() {
             className="h-12 w-12 rounded-full object-cover border-2 border-[#D4AF37]/50 shadow-sm"
             width={48}
             height={48}
-            style={{ width: "auto", height: "auto" }} // Agregar esta línea
+            style={{ width: "auto", height: "auto" }}
           />
           <span>Óptica Mia</span>
         </Link>
@@ -39,12 +40,10 @@ export default function Header() {
           <Link href="/lentes" className="font-medium text-[#C39C4E] transition hover:text-white md:font-semibold">Lentes</Link>
           <Link href="/gafas-de-sol" className="font-medium text-[#C39C4E] transition hover:text-white md:font-semibold">Gafas de Sol</Link>
           <Link href="/probador-landing" className="font-medium text-[#C39C4E] transition hover:text-white md:font-semibold">Probador Virtual</Link>
-          {/* <Link href="/carrito" className="font-medium text-[#C39C4E] transition hover:text-white md:font-semibold">Carrito</Link> */}
         </nav>
 
-        {/* Derecha */}
+        {/* Carrito */}
         <div className="flex items-center gap-4 md:gap-6">
-          {/* Carrito */}
           <Link href="/carrito" className="relative flex items-center gap-2 rounded-md bg-[#D4AF37] px-4 py-2 text-base font-semibold text-slate-900 transition hover:bg-[#C39C4E] md:text-lg">
             <ShoppingCart size={20} />
             <span>Carrito</span>
