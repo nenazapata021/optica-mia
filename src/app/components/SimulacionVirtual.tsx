@@ -26,12 +26,18 @@ export default function SimulacionVirtual() {
   const detectarRostro = async (imagenCargada?: HTMLImageElement) => {
     const imagen = imagenCargada ?? fotoRef.current;
 
-    if (!imagen || !imagen.complete || imagen.naturalWidth === 0 || imagen.naturalHeight === 0) {
+    if (!imagen) {
+      setMensaje("La imagen aún no está lista para analizarse. Intenta nuevamente.");
+      return;
+    }
+
+    if (!imagen.complete || imagen.naturalWidth === 0 || imagen.naturalHeight === 0) {
       setMensaje("La imagen aún no está lista para analizarse. Intenta nuevamente.");
       return;
     }
 
     try {
+      localStorage.setItem("tfjs-logs", "disabled");
       const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
       const vision = await FilesetResolver.forVisionTasks(WASM);
       const detector = await FaceLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: MODELO }, runningMode: "IMAGE", numFaces: 1 });
