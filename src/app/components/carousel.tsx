@@ -77,7 +77,9 @@ export default function Carousel() {
         >
           {images.map((image, index) => (
           <SwiperSlide key={index} className="group rounded-lg overflow-hidden shadow-lg">
-            <Image src={image.src} alt={image.alt} className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105" />
+            <div className="relative h-64 w-full">
+              <Image fill src={image.src} alt={image.alt} className="object-cover transition-transform duration-300 group-hover:scale-105" />
+            </div>
           </SwiperSlide>
         ))}
         </Swiper>

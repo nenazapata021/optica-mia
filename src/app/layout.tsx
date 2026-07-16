@@ -1,13 +1,14 @@
 import "./globals.css";
 import Providers from "./providers";
 import Header from "./components/header";
+import { type ReactNode } from "react";
 
 export const metadata = {
   title: "Óptica Mia",
   description: "El futuro, a la vista.",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
       <body className="min-h-screen bg-gray-50 flex flex-col">

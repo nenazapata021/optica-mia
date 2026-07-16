@@ -20,7 +20,7 @@ export default function GafasDeSolPage() {
     <Catalogo 
       titulo="Nuestra Colección de Gafas de Sol"
       descripcion="Protección con estilo. Descubre los mejores diseños para lucir bajo el sol."
-      listaProductos={misGafasDeSol} 
+      listaProductos={misGafasDeSol.map(({ id, imagen, nombre, precio, categoria, color }) => ({ id: String(id), image: imagen, name: nombre, price: precio, categoria, color, descripcion: "" }))}
     />
   );
 }

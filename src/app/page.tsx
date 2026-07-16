@@ -17,12 +17,12 @@ import Contacto from "./components/contacto";
 import Testimonios from "./components/Testimonios";
 
 const productosInicio = [
-    { id: 'p1', nombre: 'Montura Clásica', precio: 120000, imagen: foto1, categoria: 'mujer', color: 'Transparente' },
-    { id: 'p2', nombre: 'Montura Rosa', precio: 150000, imagen: foto2, categoria: 'mujer', color: 'Rosa' },
-    { id: 'p3', nombre: 'Montura Dorada', precio: 180000, imagen: foto3, categoria: 'mujer', color: 'Dorado' },
-    { id: 'p4', nombre: 'Montura Ejecutiva', precio: 175000, imagen: foto4, categoria: 'hombre', color: 'Cobre' },
-    { id: 'p5', nombre: 'Montura Kids', precio: 95000, imagen: foto5, categoria: 'niños', color: 'Cobre' },
-    { id: 'p6', nombre: 'Gafas de Sol Aviador', precio: 210000, imagen: foto6, categoria: 'sol', color: 'Negro' },
+    { id: 'p1', name: 'Montura Clásica',      price: 120000, image: foto1, categoria: 'mujer',  color: 'Transparente', descripcion: '' },
+    { id: 'p2', name: 'Montura Rosa',          price: 150000, image: foto2, categoria: 'mujer',  color: 'Rosa',         descripcion: '' },
+    { id: 'p3', name: 'Montura Dorada',        price: 180000, image: foto3, categoria: 'mujer',  color: 'Dorado',       descripcion: '' },
+    { id: 'p4', name: 'Montura Ejecutiva',     price: 175000, image: foto4, categoria: 'hombre', color: 'Cobre',        descripcion: '' },
+    { id: 'p5', name: 'Montura Kids',          price:  95000, image: foto5, categoria: 'niños',  color: 'Cobre',        descripcion: '' },
+    { id: 'p6', name: 'Gafas de Sol Aviador',  price: 210000, image: foto6, categoria: 'sol',    color: 'Negro',        descripcion: '' },
   ];
 
 export default function Home() {

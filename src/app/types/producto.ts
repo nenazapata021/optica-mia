@@ -4,7 +4,7 @@ export interface Producto {
   id: string;
   name: string;
   price: number;
-  image: StaticImageData | StaticImageData[]; // Puede ser una o varias imágenes
+  image: StaticImageData | string | Array<StaticImageData | string>; // Puede ser una o varias imágenes
   categoria: string;
   descripcion: string;
   modelo?: string;

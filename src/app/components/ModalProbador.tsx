@@ -1,103 +1,70 @@
 "use client";
 
-import { type MouseEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from "react";
 import Image from "next/image";
+import { Camera, LoaderCircle, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Camera, Upload, X } from "lucide-react";
 import { type Producto } from "../types/producto";
 
-interface ModalProbadorProps {
-  producto: Producto;
-  onClose: () => void;
-}
+interface ModalProbadorProps { producto: Producto; onClose: () => void; }
+type Paso = "opciones" | "camara" | "cargando";
 
 export default function ModalProbador({ producto, onClose }: ModalProbadorProps) {
   const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [paso, setPaso] = useState<Paso>("opciones");
+  const [error, setError] = useState("");
+  const imagenProducto = Array.isArray(producto.image) ? producto.image[0] : producto.image;
+  const imagenProductoUrl = typeof imagenProducto === "string" ? imagenProducto : imagenProducto.src;
 
-  const handleNavigation = () => {
-    // Navega a la página del probador, pasando el ID del producto
-    router.push(`/probador?productoId=${producto.id}`);
+  const detenerCamara = () => { streamRef.current?.getTracks().forEach((track) => track.stop()); streamRef.current = null; };
+  useEffect(() => detenerCamara, []);
+
+  const guardarYContinuar = (fotoUrl: string) => {
+    detenerCamara();
+    sessionStorage.setItem("optica-mia-try-on", JSON.stringify({
+      fotoUrl,
+      producto: { ...producto, image: imagenProductoUrl },
+    }));
+    setPaso("cargando");
+    window.setTimeout(() => router.push(`/probador?productoId=${encodeURIComponent(producto.id)}`), 2500);
   };
 
-  // Evita que el clic dentro del modal lo cierre
-  const handleModalContentClick = (e: MouseEvent) => {
-    e.stopPropagation();
+  const abrirCamara = async () => {
+    setError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+      streamRef.current = stream;
+      setPaso("camara");
+      window.setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; void videoRef.current.play(); } }, 0);
+    } catch {
+      setError("No fue posible acceder a la cámara. Revisa los permisos o sube una foto.");
+    }
   };
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4"
-      onClick={onClose} // Cierra el modal si se hace clic en el fondo
-    >
-      <div
-        className="relative w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl text-center transform transition-all duration-300 scale-95 opacity-0 animate-fade-in-scale"
-        onClick={handleModalContentClick}
-      >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-          aria-label="Cerrar modal"
-        >
-          <X size={24} />
-        </button>
+  const capturarFoto = () => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth || !video.videoHeight) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.drawImage(video, 0, 0);
+    guardarYContinuar(canvas.toDataURL("image/jpeg", 0.92));
+  };
 
-        <h2 className="text-2xl md:text-3xl font-extrabold text-[#005f6b] mb-3">
-          Simulador Virtual IA
-        </h2>
-        <p className="text-slate-500 mb-6">
-          Prueba cómo te queda esta montura antes de decidirte.
-        </p>
+  const seleccionarArchivo = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith("image/")) guardarYContinuar(URL.createObjectURL(file));
+    event.target.value = "";
+  };
+  const detenerPropagacion = (event: MouseEvent<HTMLDivElement>) => event.stopPropagation();
 
-        {/* Información de la montura */}
-        <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 mb-8">
-          <div className="relative h-20 w-20 [flex-shrink-0] overflow-hidden rounded-lg">
-            <Image
-              src={Array.isArray(producto.image) ? producto.image[0] : producto.image}
-              alt={producto.name}
-              fill
-              className="object-contain"
-            />
-          </div>
-          <div className="text-left">
-            <p className="text-sm text-slate-500">Montura seleccionada</p>
-            <h3 className="text-lg font-bold text-slate-800">{producto.name}</h3>
-          </div>
-        </div>
-
-        {/* Botones de acción */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <button
-            onClick={handleNavigation}
-            className="flex flex-col items-center justify-center gap-2 rounded-2xl p-6 font-semibold text-white transition-all duration-200 hover:scale-105 active:scale-100"
-            style={{ backgroundColor: "#008294" }}
-          >
-            <Camera size={32} />
-            <span className="text-lg">Tomar foto</span>
-          </button>
-          <button
-            onClick={handleNavigation}
-            className="flex flex-col items-center justify-center gap-2 rounded-2xl p-6 font-semibold text-slate-700 bg-slate-100 border border-slate-200 transition-all duration-200 hover:scale-105 active:scale-100"
-          >
-            <Upload size={32} />
-            <span className="text-lg">Subir foto</span>
-          </button>
-        </div>
-      </div>
-      <style jsx>{`
-        @keyframes fadeInScale {
-          from {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        .animate-fade-in-scale {
-          animation: fadeInScale 0.3s ease-out forwards;
-        }
-      `}</style>
-    </div>
-  );
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="relative w-full max-w-lg rounded-3xl bg-white p-8 text-center shadow-2xl" onClick={detenerPropagacion}>
+      {paso !== "cargando" && <button onClick={onClose} className="absolute right-4 top-4 text-slate-400 hover:text-slate-600" aria-label="Cerrar"><X /></button>}
+      {paso === "cargando" ? <div className="py-12"><LoaderCircle className="mx-auto mb-5 animate-spin text-[#008294]" size={54} /><h2 className="text-2xl font-bold text-slate-800">Generando simulación...</h2><p className="mt-3 text-slate-500">Estamos ajustando la montura a tu rostro.</p><div className="mt-7 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full w-full origin-left animate-[pulse_1s_ease-in-out_infinite] rounded-full bg-[#008294]" /></div></div> : paso === "camara" ? <><h2 className="mb-5 text-2xl font-extrabold text-[#005f6b]">Toma tu foto</h2><video ref={videoRef} autoPlay playsInline muted className="aspect-video w-full rounded-2xl bg-slate-900 object-cover" /><button onClick={capturarFoto} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#008294] py-3 font-semibold text-white"><Camera size={20} /> Capturar foto</button><button onClick={() => { detenerCamara(); setPaso("opciones"); }} className="mt-3 text-sm font-medium text-slate-500">Volver</button></> : <><h2 className="text-2xl font-extrabold text-[#005f6b]">Simulador Virtual IA</h2><p className="mb-6 mt-2 text-slate-500">Prueba cómo te queda esta montura antes de decidirte.</p><div className="mb-7 flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left"><div className="relative h-16 w-16 shrink-0"><Image src={Array.isArray(producto.image) ? producto.image[0] : producto.image} alt={producto.name} fill className="object-contain" /></div><div><p className="text-xs text-slate-500">Montura seleccionada</p><p className="font-bold text-slate-800">{producto.name}</p></div></div>{error && <p className="mb-4 text-sm text-red-600">{error}</p>}<div className="grid gap-4 sm:grid-cols-2"><button onClick={() => void abrirCamara()} className="flex flex-col items-center gap-2 rounded-2xl bg-[#008294] p-6 font-semibold text-white"><Camera size={30} />Tomar foto</button><button onClick={() => inputRef.current?.click()} className="flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-6 font-semibold text-slate-700"><Upload size={30} />Subir foto</button></div><input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={seleccionarArchivo} /></>}</div>
+  </div>;
 }

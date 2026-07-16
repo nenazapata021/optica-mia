@@ -1,12 +1,8 @@
 "use client";
 
-import PropTypes from "prop-types";
+import { type ReactNode } from "react";
 import { CartProvider } from "./context/CartContextType";
 
-export default function Providers({ children }) {
+export default function Providers({ children }: { children: ReactNode }) {
   return <CartProvider>{children}</CartProvider>;
 }
-
-Providers.propTypes = {
-  children: PropTypes.node.isRequired,
-};

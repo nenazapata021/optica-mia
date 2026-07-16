@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import Image, { type StaticImageData } from 'next/image';
 import { useRouter } from "next/navigation";
 import { useCart } from "../context/CartContextType";
-import { toast } from "sonner";
 import { type Producto } from "../types/producto";
+import ModalProbador from "./ModalProbador";
 
 interface CatalogoProps {
   titulo: string;
@@ -13,9 +13,20 @@ interface CatalogoProps {
   listaProductos: Producto[];
 }
 
+// --- FUNCIÓN AUXILIAR PARA MANEJAR LA IMAGEN ---
+// Esta función se encarga de obtener la fuente de la imagen de forma segura.
+function getProductImageSrc(image: Producto['image']): string | StaticImageData | null {
+  if (Array.isArray(image)) {
+    // Si es un arreglo, devuelve la primera imagen (o null si está vacío)
+    return image.length > 0 ? image[0] : null;
+  }
+  // Si no es un arreglo, devuelve la imagen directamente (o null si es nulo/undefined)
+  return image || null;
+}
 export default function Catalogo({ titulo, descripcion, listaProductos = [] }: CatalogoProps) {
   const { addToCart } = useCart();
   const [filtro, setFiltro] = useState("todos");
+  const [productoParaProbar, setProductoParaProbar] = useState<Producto | null>(null);
   const router = useRouter();
 
   const productosFiltrados = listaProductos.filter((p) => {
@@ -30,13 +41,8 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
       ...producto,
       image: Array.isArray(producto.image) ? producto.image[0] : producto.image,
     };
-    addToCart(productoParaCarrito);
-    toast.success(`${producto.name} agregado al carrito!`, {
-      action: {
-        label: "Ver carrito",
-        onClick: () => router.push("/carrito"),
-      },
-    });
+    addToCart(productoParaCarrito); // 1. Añade el producto al carrito
+    router.push("/carrito"); // 2. Redirige al usuario al carrito
   };
 
   const getButtonClass = (cat: string) =>
@@ -45,57 +51,85 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
       : "px-5 py-2 text-sm font-medium rounded-full capitalize transition hover:opacity-80 bg-[#e0f2f4] text-[#005f6b]";
 
   return (
-    <div className="w-full min-h-screen bg-slate-50 py-10 px-4">
-      <div className="max-w-6xl mx-auto text-center mb-10">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">{titulo}</h1>
-        <p className="text-gray-600 max-w-xl mx-auto">{descripcion}</p>
+    <>
+      {productoParaProbar && (
+        <ModalProbador
+          producto={productoParaProbar}
+          onClose={() => setProductoParaProbar(null)}
+        />
+      )}
+      <div className="w-full min-h-screen bg-slate-50 py-10 px-4">
+        <div className="max-w-6xl mx-auto text-center mb-10">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">{titulo}</h1>
+          <p className="text-gray-600 max-w-xl mx-auto">{descripcion}</p>
 
-        <div className="flex justify-center gap-3 mt-6 flex-wrap">
-          {categorias.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setFiltro(cat)}
-              className={getButtonClass(cat)}
-            >
-              {cat}
-            </button>
+          <div className="flex justify-center gap-3 mt-6 flex-wrap">
+            {categorias.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setFiltro(cat)}
+                className={getButtonClass(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="max-w-6xl mx-auto grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {productosFiltrados.map((producto) => (
+            <div key={producto.id} className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-sm flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
+              
+              {(() => {
+                const imageSrc = getProductImageSrc(producto.image);
+                return (
+              <div className="relative w-full h-48 rounded-xl overflow-hidden mb-4 bg-gray-50">
+                    {imageSrc && <Image 
+                      src={imageSrc}
+                      alt={producto.name}
+                      fill
+                      className="object-contain p-2"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />}
+              </div>
+                );
+              })()}
+              <div className="flex flex-col [flex-grow]">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-lg font-bold text-gray-800 pr-2">
+                    {producto.name}
+                  </h3>
+                  <span className="text-lg font-bold text-blue-600 text-right whitespace-nowrap">
+                    ${(producto.price ?? 0).toLocaleString("es-CO")}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center text-sm text-gray-500 capitalize mb-4">
+                  <span>{producto.categoria}</span>
+                  {producto.color && <span>{producto.color.split('/')[0]}</span>}
+                </div>
+
+                <div className="border-t border-gray-200 my-4"></div>
+
+                <div className="mt-auto flex flex-col gap-2">
+                   <button
+                    onClick={() => setProductoParaProbar(producto)}
+                    className="w-full py-2.5 rounded-lg font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+                  >
+                    🕶️ Probar simulador
+                  </button>
+                  <button
+                    onClick={() => handleAddToCart(producto)}
+                    className="w-full py-2.5 rounded-lg font-semibold text-white bg-[#D4AF37] hover:bg-[#D4AF37] transition-colors"
+                  >
+                    Seleccionar Montura
+                  </button>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       </div>
-
-      <div className="max-w-6xl mx-auto grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {productosFiltrados.map((producto) => (
-          <div key={producto.id} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-300 group">
-            <div className="relative w-full h-48 rounded-xl overflow-hidden mb-4">
-              <Image 
-                src={Array.isArray(producto.image) ? producto.image[0] : producto.image} 
-                alt={producto.name} 
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              />
-            </div>
-            <div className="flex flex-col [flex-grow]">
-              <h3 className="text-lg font-bold text-gray-800 truncate">
-                {producto.name} 
-              </h3>
-              <p className="text-sm text-gray-500 capitalize mb-3">
-                {producto.categoria}
-              </p>
-              <p className="text-xl font-bold text-[#005f6b] mb-4">
-                {/* Asegúrate de usar 'producto.price' */}
-                ${producto.price.toLocaleString("es-CO")}
-              </p>
-              <button
-                onClick={() => handleAddToCart(producto)}
-                className="mt-auto w-full py-2.5 rounded-lg font-semibold text-white bg-[#008294] hover:bg-[#006a7a] transition-colors"
-              >
-                Seleccionar Montura
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    </>
   );
 }

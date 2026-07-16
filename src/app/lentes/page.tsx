@@ -8,12 +8,12 @@ import foto6 from "../assets/foto6.jpg";
 
 export default function LentesPage() {
   const misProductos = [
-    { id: 1, imagen: foto1, nombre: "Montura Clásica", precio: 120000, categoria: "mujer", color: "Plata" },
-    { id: 2, imagen: foto2, nombre: "Montura Moderna Slim", precio: 120000, categoria: "mujer", color: "Plata" },
-    { id: 3, imagen: foto3, nombre: "Montura Aviador Rectangular", precio: 120000, categoria: "hombre", color: "Negro" },
-    { id: 4, imagen: foto4, nombre: "Montura Retro", precio: 135000, categoria: "sol", color: "Negro" },
-    { id: 5, imagen: foto5, nombre: "Montura Junior", precio: 95000, categoria: "niños", color: "Azul" },
-    { id: 6, imagen: foto6, nombre: "Montura Cateye", precio: 150000, categoria: "mujer", color: "Carey" },
+    { id: "1", image: foto1, name: "Montura Clásica", price: 120000, categoria: "mujer", color: "Plata", descripcion: "" },
+    { id: "2", image: foto2, name: "Montura Moderna Slim", price: 120000, categoria: "mujer", color: "Plata", descripcion: "" },
+    { id: "3", image: foto3, name: "Montura Aviador Rectangular", price: 120000, categoria: "hombre", color: "Negro", descripcion: "" },
+    { id: "4", image: foto4, name: "Montura Retro", price: 135000, categoria: "sol", color: "Negro", descripcion: "" },
+    { id: "5", image: foto5, name: "Montura Junior", price: 95000, categoria: "niños", color: "Azul", descripcion: "" },
+    { id: "6", image: foto6, name: "Montura Cateye", price: 150000, categoria: "mujer", color: "Carey", descripcion: "" },
   ];
 
   return (

@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import type { StaticImageData } from "next/image";
 import Link from "next/link";
 import { Trash2, ShoppingCart, ArrowRight, Plus, Minus } from "lucide-react";
-import { useCart, type CartContextType } from "../context/CartContextType";
+import { useCart } from "../context/CartContextType";
 
 export default function CarritoPage() {
   const {
@@ -14,7 +15,7 @@ export default function CarritoPage() {
     clearCart,
     increaseQuantity,
     decreaseQuantity,
-  }: CartContextType = useCart();
+  } = useCart();
 
   const [isClient, setIsClient] = useState(false);
 
@@ -63,7 +64,11 @@ export default function CarritoPage() {
                   className="bg-white p-4 rounded-xl border flex flex-col sm:flex-row items-center gap-4"
                 >
                   <Image
-                    src={item.image}
+                    src={
+                      (Array.isArray(item.image)
+                        ? item.image[0]
+                        : item.image) as StaticImageData
+                    }
                     alt={item.name}
                     width={80}
                     height={80}
@@ -76,7 +81,10 @@ export default function CarritoPage() {
                     </h3>
 
                     <p className="text-[#005f6b] font-semibold">
-                      ${item.price.toLocaleString("es-CO")}
+                      $
+                      {typeof item.price === "number"
+                        ? item.price.toLocaleString("es-CO")
+                        : "0"}
                     </p>
                   </div>
 
@@ -136,7 +144,9 @@ export default function CarritoPage() {
 
               <div className="flex justify-between mb-2">
                 <span>Subtotal</span>
-                <span>${totalPrice.toLocaleString("es-CO")}</span>
+                <span>
+                  ${typeof totalPrice === "number" ? totalPrice.toLocaleString("es-CO") : "0"}
+                </span>
               </div>
 
               <div className="flex justify-between mb-6">
@@ -148,7 +158,10 @@ export default function CarritoPage() {
                 <span className="text-lg font-bold">Total</span>
 
                 <span className="text-2xl font-bold text-[#005f6b]">
-                  ${totalPrice.toLocaleString("es-CO")}
+                  $
+                  {typeof totalPrice === "number"
+                    ? totalPrice.toLocaleString("es-CO")
+                    : "0"}
                 </span>
               </div>
 

@@ -15,7 +15,6 @@ interface DetalleProductoProps {
 
 export default function DetalleProducto({ producto }: DetalleProductoProps) {
   const [imagenPrincipal, setImagenPrincipal] = useState(Array.isArray(producto.image) ? producto.image[0] : producto.image);
-  const [tallaSeleccionada, setTallaSeleccionada] = useState("M");
   const [colorSeleccionado, setColorSeleccionado] = useState(producto.color?.split('/')[0]);
   const [mostrarModal, setMostrarModal] = useState(false); // Estado para el modal
   
@@ -65,7 +64,7 @@ export default function DetalleProducto({ producto }: DetalleProductoProps) {
                   key={index}
                   onClick={() => setImagenPrincipal(img)}
                   className={`relative aspect-square w-full rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                    imagenPrincipal.src === img.src
+                    (typeof imagenPrincipal === "string" ? imagenPrincipal : imagenPrincipal.src) === (typeof img === "string" ? img : img.src)
                       ? "border-[#008294] ring-2 ring-[#008294]/50"
                       : "border-slate-200 hover:border-slate-400"
                   }`}
@@ -98,26 +97,6 @@ export default function DetalleProducto({ producto }: DetalleProductoProps) {
 
             <div className="prose prose-slate max-w-none text-slate-600 mb-8">
               <p>{producto.descripcion}</p>
-            </div>
-
-            {/* Selector de Talla */}
-            <div className="mb-6">
-              <label className="block text-sm font-bold text-slate-700 mb-2">Talla</label>
-              <div className="flex gap-2">
-                {["S", "M", "L"].map((talla) => (
-                  <button
-                    key={talla}
-                    onClick={() => setTallaSeleccionada(talla)}
-                    className={`w-12 h-12 rounded-lg border text-sm font-semibold transition ${
-                      tallaSeleccionada === talla
-                        ? "bg-[#008294] text-white border-[#008294]"
-                        : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
-                    }`}
-                  >
-                    {talla}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Selector de Color */}

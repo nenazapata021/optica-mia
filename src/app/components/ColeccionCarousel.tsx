@@ -39,8 +39,8 @@ export default function ColeccionCarousel({ productos, onSelectProduct }: Colecc
         {productos.map((producto) => (
           <SwiperSlide key={producto.id} onClick={() => onSelectProduct(producto)} className="cursor-pointer group">
             <div className="hover-scale bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-              <div className="img-zoom-wrap h-32">
-                <Image src={Array.isArray(producto.image) ? producto.image[0] : producto.image} alt={producto.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+              <div className="img-zoom-wrap h-32 relative">
+                <Image fill src={Array.isArray(producto.image) ? producto.image[0] : producto.image} alt={producto.name} className="object-cover transition-transform duration-300 group-hover:scale-110" />
               </div>
               <div className="p-3">
                 <h4 className="font-semibold text-gray-800 text-sm truncate">{producto.name}</h4>

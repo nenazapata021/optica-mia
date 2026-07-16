@@ -51,7 +51,7 @@ export default function CarritoPage() {
                 >
                   <div className="flex items-center gap-4">
                     <Image
-                      src={item.image}
+                      src={Array.isArray(item.image) ? item.image[0] : item.image}
                       alt={item.name}
                       width={96}
                       height={96}

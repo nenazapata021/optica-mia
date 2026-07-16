@@ -22,7 +22,11 @@ const todosProd = [
   { id: 'p6', nombre: 'Gafas de Sol Aviador', precio: 210000, imagen: foto6, categoria: 'sol', color: 'Negro' },
 ];
 /* ─── Icono gafas SVG ─── */
-function IconGafas({ size = 48, color = "#008294" }) {
+interface IconGafasProps {
+  size?: number;
+  color?: string;
+}
+function IconGafas({ size = 48, color = "#008294" }: IconGafasProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M2 9h2a2 2 0 0 1 2 2v1a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2v-1" />
@@ -33,10 +37,20 @@ function IconGafas({ size = 48, color = "#008294" }) {
 }
 
 /* ─── Modal de bienvenida ─── */
-function ModalBienvenida({ producto, onTomarFoto, onSubirFoto, onCerrar }) {
-  const inputRef = useRef(null);
+interface ProductoLocal {
+  nombre?: string;
+  [key: string]: unknown;
+}
+interface ModalBienvenidaProps {
+  producto: ProductoLocal | null;
+  onTomarFoto: () => void;
+  onSubirFoto: (file: File) => void;
+  onCerrar: () => void;
+}
+function ModalBienvenida({ producto, onTomarFoto, onSubirFoto, onCerrar }: ModalBienvenidaProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) onSubirFoto(file);
   };
@@ -161,15 +175,29 @@ const cameraErrorDefinitions = {
   },
 };
 
-/* ─── Icono gafas SVG ─── */
-
+// Definimos un tipo para las claves de los errores de cámara
+type CameraErrorType = keyof typeof cameraErrorDefinitions;
 
 /* ─── Modal de error de cámara ─── */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function ModalErrorCamara({ error, onReintentar, onSubirFoto, onCerrar }) {
-  const inputRef = useRef(null);
+interface CameraError {
+  tipo: string;
+  titulo: string;
+  detalle: string;
+  icono: string;
+}
 
-  const handleFileChange = (e) => {
+interface ModalErrorCamaraProps {
+  error: CameraError;
+  onReintentar: () => void;
+  onSubirFoto: (file: File) => void;
+  onCerrar: () => void;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function ModalErrorCamara({ error, onReintentar, onSubirFoto, onCerrar }: ModalErrorCamaraProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) onSubirFoto(file);
   };
@@ -205,7 +233,9 @@ function ModalErrorCamara({ error, onReintentar, onSubirFoto, onCerrar }) {
           <Image
             src={logoOpticaMia}
             alt="Logo Óptica Mia"
-            className="h-8 w-8 rounded-full object-cover border border-gray-200"
+            width={32}
+            height={32}
+            className="rounded-full object-cover border border-gray-200"
           />
           <h3 className="text-lg font-bold text-gray-800">Óptica Mia</h3>
         </div>
@@ -261,22 +291,22 @@ function ModalErrorCamara({ error, onReintentar, onSubirFoto, onCerrar }) {
 
 /* ─── Componente principal ─── */
 export default function Probador() {
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { agregarAlCarrito } = useCart();
+  const { addToCart } = useCart();
 
   const productoId = searchParams.get('productoId');
   const producto = todosProd.find(p => p.id === productoId) || null;
 
   const [fase, setFase] = useState("modal"); // "modal" | "camara" | "foto"
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [errorCamara, setErrorCamara] = useState(null); // null | { titulo, detalle, tipo }
+  const [errorCamara, setErrorCamara] = useState<CameraError | null>(null); // null | { titulo, detalle, tipo }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [camaraActiva, setCamaraActiva] = useState(false);
-  const [fotoUrl, setFotoUrl] = useState(null);
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const iniciarCamara = useCallback(async () => {
     setFase("camara");
     setErrorCamara(null);
@@ -294,8 +324,8 @@ export default function Probador() {
     } catch (err) {
       setCamaraActiva(false);
       // Detectar tipo de error específico
-      const name = err?.name || "";
-      let errorType = "desconocido";
+      const name = (err instanceof Error ? err.name : "") || "";
+      let errorType: CameraErrorType = "desconocido";
 
       if (name === "NotAllowedError" || name === "PermissionDeniedError") {
         errorType = "permisos";
@@ -320,7 +350,7 @@ export default function Probador() {
   }, []);
 
   /* Maneja foto subida */
-  const handleSubirFoto = (file) => {
+  const handleSubirFoto = (file: File) => {
     const url = URL.createObjectURL(file);
     setFotoUrl(url);
     // Detener cámara si estaba activa
@@ -375,8 +405,11 @@ export default function Probador() {
       {/* ── Vista principal del probador ── */}
       <div className="mx-auto max-w-5xl px-4 py-10">
         {/* Si hay una foto, mostramos la nueva sección de producto destacado */}
-        {fase === "foto" && fotoUrl && (
-          <ProductoDestacado productoInicial={producto} imagenUsuario={fotoUrl} />
+        {fase === "foto" && fotoUrl && producto && (
+          <ProductoDestacado
+            productoInicial={{ id: producto.id, name: producto.nombre, price: producto.precio, image: producto.imagen, categoria: producto.categoria, color: producto.color, descripcion: "" }}
+            imagenUsuario={fotoUrl}
+          />
         )}
       </div>
     </>

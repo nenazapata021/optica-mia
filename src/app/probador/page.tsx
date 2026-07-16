@@ -1,6 +1,5 @@
-export default function ProbadorPage() {
+import SimulacionVirtual from "../components/SimulacionVirtual";
 
-    return (
-        <h1>hola mundo</h1>
-    );
+export default function ProbadorPage() {
+  return <SimulacionVirtual />;
 }
