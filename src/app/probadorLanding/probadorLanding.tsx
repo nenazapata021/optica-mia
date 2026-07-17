@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image"; 
 import { type Producto } from "../types/producto";
-import ModalProbador from "./ModalProbador";
+import ModalProbador from "../modal probador/modalProbador";
 
 // Importación de imágenes locales
 import foto1 from '../assets/foto1.jpg';
@@ -104,7 +104,7 @@ export default function ProbadorLanding() {
                   <span className="text-lg font-bold text-gray-800 truncate">
                     {producto.name}
                   </span>
-                  <strong className="text-lg font-bold text-[#1d4ed8]">
+                  <strong className="text-lg font-bold text-[#008294]">
                     ${producto.price.toLocaleString("es-CO")}
                   </strong>
                 </div>

@@ -7,7 +7,7 @@ import { useCart } from "../context/CartContextType";
 import { type Producto } from "../types/producto";
 import { toast } from "sonner";
 import { Heart, Share2, ShoppingCart, Check, ScanFace } from "lucide-react";
-import ModalProbador from "./ModalProbador"; // Importamos el nuevo modal
+import ModalProbador from "../modal probador/modalProbador";
 
 interface DetalleProductoProps {
   producto: Producto;
@@ -91,7 +91,7 @@ export default function DetalleProducto({ producto }: DetalleProductoProps) {
             </h1>
             <p className="text-sm text-slate-500 mb-4">Modelo: {producto.modelo}</p>
 
-            <p className="text-4xl font-bold text-[#005f6b] mb-6">
+            <p className="text-4xl font-bold text-[#008294] mb-6">
               ${producto.price.toLocaleString("es-CO")}
             </p>
 

@@ -1,4 +1,4 @@
-import Catalogo from "../components/catalogo"; 
+import Catalogo from "../catalogo/catalogo"; 
 import foto1 from "../assets/foto1.jpg";
 import foto2 from "../assets/foto2.jpg";
 import foto3 from "../assets/foto3.jpg";

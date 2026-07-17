@@ -5,7 +5,7 @@ import Image, { type StaticImageData } from 'next/image';
 import { useRouter } from "next/navigation";
 import { useCart } from "../context/CartContextType";
 import { type Producto } from "../types/producto";
-import ModalProbador from "./ModalProbador";
+import ModalProbador from "../modal probador/modalProbador";
 
 interface CatalogoProps {
   titulo: string;
@@ -99,7 +99,7 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
                   <h3 className="text-lg font-bold text-gray-800 pr-2">
                     {producto.name}
                   </h3>
-                  <span className="text-lg font-bold text-blue-600 text-right whitespace-nowrap">
+                  <span className="text-lg font-bold text-[#008294] text-right whitespace-nowrap">
                     ${(producto.price ?? 0).toLocaleString("es-CO")}
                   </span>
                 </div>

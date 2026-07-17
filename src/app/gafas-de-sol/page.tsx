@@ -1,4 +1,4 @@
-import Catalogo from "../components/catalogo";
+import Catalogo from "../catalogo/catalogo";
 import gafasDeSol1 from "../assets/gafas de sol1.jpg";
 import gafasDeSol2 from "../assets/gafas de sol2.jpg";
 import gafasDeSol3 from "../assets/gafas de sol3.jpg";

@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { StaticImageData } from "next/image";
 import Image from "next/image" ;
-import ProductInfo from './ProductInfo';
-import ColeccionCarousel from './ColeccionCarousel';
+import ProductInfo from '../producto info/ProductInfo';
+import ColeccionCarousel from '../ColeccionCarousel/ColeccionCarousel';
 import { productosLentes, productosGafasSol } from '../data/productos.js';
 import { type Producto } from '../types/producto';
 

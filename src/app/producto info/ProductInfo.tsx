@@ -66,7 +66,7 @@ export default function ProductInfo({ producto }: ProductInfoProps) {
       )}
 
       <div className="mb-8">
-        <p className="text-4xl font-bold text-[#005f6b]">${producto.price.toLocaleString('es-CO')}</p>
+        <p className="text-4xl font-bold text-[#008294]">${producto.price.toLocaleString('es-CO')}</p>
       </div>
 
       <div className="flex flex-col gap-3">

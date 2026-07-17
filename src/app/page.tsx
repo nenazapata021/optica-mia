@@ -9,12 +9,12 @@ import foto5 from './assets/foto5.jpg';
 import foto6 from './assets/foto6.jpg'; 
 import Image from "next/image";
 
-import Carousel from "./components/carousel";
-import Catalogo from "./components/catalogo";
-import Servicios from "./components/servicios";
-import ProcesoCompra from "./components/ProcesoCompra";
-import Contacto from "./components/contacto";
-import Testimonios from "./components/Testimonios";
+import Carousel from "./carousel/carousel";
+import Catalogo from "./catalogo/catalogo";
+import Servicios from "./servicios/servicios";
+import ProcesoCompra from "./proceso compra/ProcesoCompra";
+import Contacto from "./contacto/contacto";
+import Testimonios from "./testimonios/Testimonios";
 
 const productosInicio = [
     { id: 'p1', name: 'Montura Clásica',      price: 120000, image: foto1, categoria: 'mujer',  color: 'Transparente', descripcion: '' },
@@ -104,7 +104,6 @@ export default function Home() {
       <div id="contacto" className="py-4 w-full">
         <Contacto />
       </div>
-
       </div>
    );
 }

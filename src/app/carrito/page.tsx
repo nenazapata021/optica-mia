@@ -80,7 +80,7 @@ export default function CarritoPage() {
                       {item.name}
                     </h3>
 
-                    <p className="text-[#005f6b] font-semibold">
+                    <p className="text-[#008294] font-semibold">
                       $
                       {typeof item.price === "number"
                         ? item.price.toLocaleString("es-CO")
@@ -144,7 +144,7 @@ export default function CarritoPage() {
 
               <div className="flex justify-between mb-2">
                 <span>Subtotal</span>
-                <span>
+                <span className="text-[#008294]">
                   ${typeof totalPrice === "number" ? totalPrice.toLocaleString("es-CO") : "0"}
                 </span>
               </div>
@@ -157,7 +157,7 @@ export default function CarritoPage() {
               <div className="border-t pt-4 flex justify-between">
                 <span className="text-lg font-bold">Total</span>
 
-                <span className="text-2xl font-bold text-[#005f6b]">
+                <span className="text-2xl font-bold text-[#008294]">
                   $
                   {typeof totalPrice === "number"
                     ? totalPrice.toLocaleString("es-CO")

@@ -113,7 +113,7 @@ export default function CarritoPage() {
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-slate-600">Subtotal ({totalItems} productos)</span>
-                  <span className="font-medium text-slate-800">${totalPrice.toFixed(2)}</span>
+                  <span className="font-medium text-[#008294]">${totalPrice.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-600">Envío</span>
@@ -121,7 +121,7 @@ export default function CarritoPage() {
                 </div>
                 <div className="flex justify-between border-t pt-4 text-lg font-bold">
                   <span className="text-slate-900">Total</span>
-                  <span className="text-slate-900">${totalPrice.toFixed(2)}</span>
+                  <span className="text-[#008294]">${totalPrice.toFixed(2)}</span>
                 </div>
               </div>
               <button className="mt-6 w-full rounded-md bg-[#D4AF37] py-3 text-lg font-semibold text-slate-900 transition hover:bg-[#C39C4E]">
