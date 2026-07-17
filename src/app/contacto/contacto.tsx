@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import instagramLogo from "../assets/instagram.jpg";
-import whatsappLogo from "../assets/whatsapp.jpg"; // Asegúrate de tener este logo en tu carpeta de assets
 
 export default function Contacto() {
   return (
@@ -29,20 +28,6 @@ export default function Contacto() {
               alt="Instagram"
               width={60}
               height={60}
-              priority
-            />
-          </a>
-          <a
-            href="https://wa.me/57 301 7391219" // <-- Reemplaza este número con tu número de WhatsApp
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full overflow-hidden transition-transform hover:scale-110"
-          >
-            <Image
-              src={whatsappLogo}
-              alt="WhatsApp"
-              width={50}
-              height={50}
               priority
             />
           </a>

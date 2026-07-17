@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Heart } from "lucide-react";
 import { useCart } from "../context/CartContextType";
+import { useFavorites } from "../context/FavoritesContext";
 import logoOpticaMia from "../assets/optica-mia.jpg";
 
 export default function Header() {
   const { totalItems } = useCart();
+  const { favorites } = useFavorites();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -42,8 +44,17 @@ export default function Header() {
           <Link href="/probador-landing" className="font-medium text-[#C39C4E] transition hover:text-white md:font-semibold">Probador Virtual</Link>
         </nav>
 
-        {/* Carrito */}
+        {/* Carrito y Favoritos */}
         <div className="flex items-center gap-4 md:gap-6">
+          <Link href="/favoritas" className="relative flex items-center gap-1 rounded-md px-3 py-2 text-base font-semibold text-[#D4AF37] transition hover:text-white md:text-lg">
+            <Heart size={20} className={favorites.length > 0 ? "fill-red-500 text-red-500" : ""} />
+            <span className="hidden sm:inline">Favoritas</span>
+            {isMounted && favorites.length > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
+                {favorites.length}
+              </span>
+            )}
+          </Link>
           <Link href="/carrito" className="relative flex items-center gap-2 rounded-md bg-[#D4AF37] px-4 py-2 text-base font-semibold text-slate-900 transition hover:bg-[#C39C4E] md:text-lg">
             <ShoppingCart size={20} />
             <span>Carrito</span>

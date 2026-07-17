@@ -1,6 +1,7 @@
 import "./globals.css";
 import Providers from "./providers";
 import Header from "./header/header";
+import WhatsAppButton from "./whatsapp/WhatsAppButton";
 import { type ReactNode } from "react";
 
 export const metadata = {
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             {children}
           </main>
 
+          <WhatsAppButton />
           <footer
             className="py-6 text-center text-sm"
             style={{

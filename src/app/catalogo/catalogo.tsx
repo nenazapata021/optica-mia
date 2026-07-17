@@ -4,7 +4,9 @@ import { useState } from "react";
 import Image, { type StaticImageData } from 'next/image';
 import { useRouter } from "next/navigation";
 import { useCart } from "../context/CartContextType";
+import { useFavorites } from "../context/FavoritesContext";
 import { type Producto } from "../types/producto";
+import { Heart } from "lucide-react";
 import ModalProbador from "../modal probador/modalProbador";
 
 interface CatalogoProps {
@@ -25,6 +27,7 @@ function getProductImageSrc(image: Producto['image']): string | StaticImageData 
 }
 export default function Catalogo({ titulo, descripcion, listaProductos = [] }: CatalogoProps) {
   const { addToCart } = useCart();
+  const { toggleFavorite, isFavorite } = useFavorites();
   const [filtro, setFiltro] = useState("todos");
   const [productoParaProbar, setProductoParaProbar] = useState<Producto | null>(null);
   const router = useRouter();
@@ -91,6 +94,16 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
                       className="object-contain p-2"
                       sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />}
+                    <button
+                      onClick={(e) => { e.preventDefault(); toggleFavorite(producto); }}
+                      className="absolute top-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 shadow-md transition hover:scale-110"
+                      aria-label={isFavorite(producto.id) ? "Quitar de favoritos" : "Agregar a favoritos"}
+                    >
+                      <Heart
+                        size={20}
+                        className={isFavorite(producto.id) ? "fill-red-500 text-red-500" : "text-gray-400"}
+                      />
+                    </button>
               </div>
                 );
               })()}

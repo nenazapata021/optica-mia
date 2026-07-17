@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- MediaPipe requiere elementos HTMLImageElement para analizar la foto local. */
 /* eslint-disable @typescript-eslint/no-explicit-any -- @mediapipe/face_mesh es UMD y no expone tipos/exports estáticos utilizables aquí. */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type Producto } from "../types/producto";
 import ProductInfo from "../producto info/ProductInfo";
 import Carousel from "../carousel/carousel";
@@ -43,6 +43,33 @@ export default function SimulacionVirtual() {
 
   const [montura, setMontura] = useState<Montura | null>(null);
   const [mensaje, setMensaje] = useState("Analizando rostro…");
+
+  // ⬇️ Se declara ANTES del useEffect que la usa.
+  const detectarRostro = useCallback(async (imagenCargada?: HTMLImageElement) => {
+    const imagen = imagenCargada ?? fotoRef.current;
+
+    if (!imagen) {
+      setMensaje("La imagen aún no está lista para analizarse. Intenta nuevamente.");
+      return;
+    }
+
+    if (!imagen.complete || imagen.naturalWidth === 0 || imagen.naturalHeight === 0) {
+      setMensaje("La imagen aún no está lista para analizarse. Intenta nuevamente.");
+      return;
+    }
+
+    const detector = faceMeshRef.current;
+    if (!detector) {
+      // El modelo aún se está inicializando; se reintentará automáticamente cuando esté listo.
+      return;
+    }
+
+    try {
+      await detector.send({ image: imagen });
+    } catch {
+      setMensaje("No se pudo cargar la detección facial. Verifica tu conexión e inténtalo de nuevo.");
+    }
+  }, []);
 
   useEffect(() => {
     let cancelado = false;
@@ -114,34 +141,7 @@ export default function SimulacionVirtual() {
       faceMeshRef.current?.close?.();
       faceMeshRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const detectarRostro = async (imagenCargada?: HTMLImageElement) => {
-    const imagen = imagenCargada ?? fotoRef.current;
-
-    if (!imagen) {
-      setMensaje("La imagen aún no está lista para analizarse. Intenta nuevamente.");
-      return;
-    }
-
-    if (!imagen.complete || imagen.naturalWidth === 0 || imagen.naturalHeight === 0) {
-      setMensaje("La imagen aún no está lista para analizarse. Intenta nuevamente.");
-      return;
-    }
-
-    const detector = faceMeshRef.current;
-    if (!detector) {
-      // El modelo aún se está inicializando; se reintentará automáticamente cuando esté listo.
-      return;
-    }
-
-    try {
-      await detector.send({ image: imagen });
-    } catch {
-      setMensaje("No se pudo cargar la detección facial. Verifica tu conexión e inténtalo de nuevo.");
-    }
-  };
+  }, [detectarRostro]);
 
   if (!datos)
     return (
