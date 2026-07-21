@@ -1,4 +1,5 @@
-// Importa los componentes y módulos de Swiper
+'use client';
+
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules'; // 💡 Quitamos EffectFade
 import Image from 'next/image';
