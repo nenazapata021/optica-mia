@@ -44,8 +44,20 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
       ...producto,
       image: Array.isArray(producto.image) ? producto.image[0] : producto.image,
     };
-    addToCart(productoParaCarrito); // 1. Añade el producto al carrito
-    router.push("/carrito"); // 2. Redirige al usuario al carrito
+    addToCart(productoParaCarrito);
+
+    const order = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      items: [{ productId: producto.id, name: producto.name, quantity: 1, price: producto.price }],
+      total: producto.price,
+      date: new Date().toISOString(),
+      customer: "Cliente web",
+    };
+    const existing = JSON.parse(localStorage.getItem("optica-mia-orders") || "[]");
+    existing.unshift(order);
+    localStorage.setItem("optica-mia-orders", JSON.stringify(existing));
+
+    router.push("/carrito");
   };
 
   const getButtonClass = (cat: string) =>

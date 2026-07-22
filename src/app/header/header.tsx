@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ShoppingCart, Heart } from "lucide-react";
+import UserProfileIcon from "../dashboard/UserProfileIcon";
 import { useCart } from "../context/CartContextType";
 import { useFavorites } from "../context/FavoritesContext";
 import logoOpticaMia from "../assets/optica-mia.jpg";
@@ -55,9 +56,11 @@ export default function Header() {
               </span>
             )}
           </Link>
-          <Link href="/carrito" className="relative flex items-center gap-2 rounded-md bg-[#D4AF37] px-4 py-2 text-base font-semibold text-slate-900 transition hover:bg-[#C39C4E] md:text-lg">
-            <ShoppingCart size={20} />
-            <span>Carrito</span>
+          <Link href="/dashboard" className="relative flex items-center rounded-md bg-[#D4AF37] p-2 text-base font-semibold text-slate-900 transition hover:bg-[#C39C4E]">
+            <UserProfileIcon size={22} />
+          </Link>
+          <Link href="/carrito" className="relative flex items-center rounded-md bg-[#D4AF37] p-2 text-base font-semibold text-slate-900 transition hover:bg-[#C39C4E]">
+            <ShoppingCart size={22} />
             {isMounted && (
               <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
                 {totalItems}
