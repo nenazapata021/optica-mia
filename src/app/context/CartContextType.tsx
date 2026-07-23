@@ -76,9 +76,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const removeFromCart = (id: string) => {
     setCartItems((prevItems) => prevItems.filter((item) => item.id !== id));
-    const orders = JSON.parse(localStorage.getItem("optica-mia-orders") || "[]");
-    const filtered = orders.filter((o: any) =>
-      !o.items.some((i: any) => i.productId === id)
+    const orders: Array<{ items: Array<{ productId: string }> }> = JSON.parse(localStorage.getItem("optica-mia-orders") || "[]");
+    const filtered = orders.filter((o) =>
+      !o.items.some((i) => i.productId === id)
     );
     localStorage.setItem("optica-mia-orders", JSON.stringify(filtered));
   };

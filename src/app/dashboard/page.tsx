@@ -27,22 +27,26 @@ const NAV_ITEMS: { key: Tab; label: string; icon: typeof BarChart3 }[] = [
 export default function AdminDashboard() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("stats");
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [customProducts, setCustomProducts] = useState<Record<string, { nombre: string; precio: number; color: string; categoria: string }>>({});
+  const [orders, setOrders] = useState<Order[]>(() => {
+    if (typeof window !== "undefined") {
+      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+      const saved = localStorage.getItem("optica-mia-orders");
+      if (saved && cart.length > 0) return JSON.parse(saved);
+    }
+    return [];
+  });
+  const [customProducts, setCustomProducts] = useState<Record<string, { nombre: string; precio: number; color: string; categoria: string }>>(() => {
+    if (typeof window !== "undefined") {
+      const savedProducts = localStorage.getItem("optica-mia-custom-products");
+      if (savedProducts) return JSON.parse(savedProducts);
+    }
+    return {};
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ nombre: "", precio: "", color: "", categoria: "lentes" });
   const [authed, setAuthed] = useState(false);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-    const saved = localStorage.getItem("optica-mia-orders");
-    if (saved && cart.length > 0) setOrders(JSON.parse(saved));
-    else localStorage.removeItem("optica-mia-orders");
-    const savedProducts = localStorage.getItem("optica-mia-custom-products");
-    if (savedProducts) setCustomProducts(JSON.parse(savedProducts));
-  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();

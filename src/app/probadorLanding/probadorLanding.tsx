@@ -12,15 +12,44 @@ import foto3 from '../assets/foto3.jpg';
 import foto4 from '../assets/foto4.jpg';
 import foto5 from '../assets/foto5.jpg';
 import foto6 from '../assets/foto6.jpg';
+import foto7 from '../assets/foto7.jpg';
+import foto8 from '../assets/foto8.jpg';
+import foto9 from '../assets/foto9.jpg';
+import foto10 from '../assets/foto10.jpg';
+import foto11 from '../assets/foto11.jpg';
+import foto12 from '../assets/foto12.jpg';
+import foto13 from '../assets/foto13.jpg';
+import foto14 from '../assets/foto14.jpg';
+import foto15 from '../assets/foto15.jpg';
+import foto16 from '../assets/foto16.jpg';
+import foto17 from '../assets/foto17.jpg';
+import foto18 from '../assets/foto18.jpg';
+import foto19 from '../assets/foto19.jpg';
+import foto20 from '../assets/foto20.jpg';
+import foto21 from '../assets/foto21.jpg';
 
-// Base de datos local
 const todosProd: Producto[] = [
-  { id: 'p1', name: 'Montura Clásica', price: 120000, image: foto1, categoria: 'mujer', color: 'Transparente', descripcion: 'Una montura clásica y elegante.' },
-  { id: 'p2', name: 'Montura Rosa', price: 150000, image: foto2, categoria: 'mujer', color: 'Rosa', descripcion: 'Un toque de color para tu estilo.' },
-  { id: 'p3', name: 'Montura Dorada', price: 180000, image: foto3, categoria: 'mujer', color: 'Dorado', descripcion: 'Lujo y sofisticación.' },
-  { id: 'p4', name: 'Montura Ejecutiva', price: 175000, image: foto4, categoria: 'hombre', color: 'Cobre', descripcion: 'Profesionalismo y modernidad.' },
-  { id: 'p5', name: 'Montura Kids', price: 95000, image: foto5, categoria: 'niños', color: 'Cobre', descripcion: 'Resistentes y divertidas para los más pequeños.' },
-  { id: 'p6', name: 'Gafas de Sol Aviador', price: 210000, image: foto6, categoria: 'sol', color: 'Negro', descripcion: 'Un clásico que nunca pasa de moda.' },
+  { id: 'p1',  name: 'Montura Clásica',         price: 120000, image: foto1,  categoria: 'mujer',  color: 'Transparente', descripcion: '' },
+  { id: 'p2',  name: 'Montura Rosa',            price: 150000, image: foto2,  categoria: 'mujer',  color: 'Rosa',         descripcion: '' },
+  { id: 'p3',  name: 'Montura Dorada',          price: 180000, image: foto3,  categoria: 'mujer',  color: 'Dorado',       descripcion: '' },
+  { id: 'p4',  name: 'Montura Ejecutiva',       price: 175000, image: foto4,  categoria: 'hombre', color: 'Cobre',        descripcion: '' },
+  { id: 'p5',  name: 'Montura Kids',            price:  95000, image: foto5,  categoria: 'niños',  color: 'Cobre',        descripcion: '' },
+  { id: 'p6',  name: 'Gafas de Sol Aviador',    price: 210000, image: foto6,  categoria: 'sol',    color: 'Negro',        descripcion: '' },
+  { id: 'p7',  name: 'Montura Carey',           price: 135000, image: foto7,  categoria: 'mujer',  color: 'Carey',        descripcion: '' },
+  { id: 'p8',  name: 'Montura Metálica',        price: 190000, image: foto8,  categoria: 'hombre', color: 'Plateado',     descripcion: '' },
+  { id: 'p9',  name: 'Gafas de Sol Polarizadas',price: 230000, image: foto9,  categoria: 'sol',    color: 'Negro',        descripcion: '' },
+  { id: 'p10', name: 'Montura Infantil Azul',   price:  85000, image: foto10, categoria: 'niños',  color: 'Azul',         descripcion: '' },
+  { id: 'p11', name: 'Montura Elegante',        price: 200000, image: foto11, categoria: 'mujer',  color: 'Dorado',       descripcion: '' },
+  { id: 'p12', name: 'Montura Deportiva',       price: 160000, image: foto12, categoria: 'hombre', color: 'Rojo',         descripcion: '' },
+  { id: 'p13', name: 'Gafas de Sol Vintage',    price: 195000, image: foto13, categoria: 'sol',    color: 'Miel',         descripcion: '' },
+  { id: 'p14', name: 'Montura Gato',            price: 140000, image: foto14, categoria: 'mujer',  color: 'Negro',        descripcion: '' },
+  { id: 'p15', name: 'Montura Rectangular',     price: 170000, image: foto15, categoria: 'hombre', color: 'Grafito',      descripcion: '' },
+  { id: 'p16', name: 'Gafas de Sol Redondas',   price: 220000, image: foto16, categoria: 'sol',    color: 'Dorado',       descripcion: '' },
+  { id: 'p17', name: 'Montura Infantil Rosa',   price:  90000, image: foto17, categoria: 'niños',  color: 'Rosa',         descripcion: '' },
+  { id: 'p18', name: 'Montura Minimalista',     price: 155000, image: foto18, categoria: 'mujer',  color: 'Blanco',       descripcion: '' },
+  { id: 'p19', name: 'Montura Clubmaster',      price: 185000, image: foto19, categoria: 'hombre', color: 'Carey',        descripcion: '' },
+  { id: 'p20', name: 'Gafas de Sol Deportivas', price: 240000, image: foto20, categoria: 'sol',    color: 'Azul',         descripcion: '' },
+  { id: 'p21', name: 'Montura Aviador',         price: 210000, image: foto21, categoria: 'hombre', color: 'Plateado',     descripcion: '' },
 ];
 
 export default function ProbadorLanding() {
@@ -118,7 +147,7 @@ export default function ProbadorLanding() {
                 <div className="mt-auto">
                   <button 
                     onClick={() => setProductoParaProbar(producto)} 
-                    className="w-full py-2.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition flex items-center justify-center gap-2" 
+                    className="w-full py-2.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition flex items-center justify-center gap-2"
                     style={{ backgroundColor: "#008294" }}
                   >
                     🕶️ Probar Virtualmente

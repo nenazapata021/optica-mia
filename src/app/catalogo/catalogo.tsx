@@ -47,7 +47,7 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
     addToCart(productoParaCarrito);
 
     const order = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      id: crypto.randomUUID(),
       items: [{ productId: producto.id, name: producto.name, quantity: 1, price: producto.price }],
       total: producto.price,
       date: new Date().toISOString(),
