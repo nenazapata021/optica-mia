@@ -46,12 +46,13 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
     };
     addToCart(productoParaCarrito);
 
+    const customerData = JSON.parse(localStorage.getItem("optica-mia-customer-data") || "null");
     const order = {
       id: crypto.randomUUID(),
       items: [{ productId: producto.id, name: producto.name, quantity: 1, price: producto.price }],
       total: producto.price,
       date: new Date().toISOString(),
-      customer: "Cliente web",
+      customer: customerData?.nombre || "Cliente web",
     };
     const existing = JSON.parse(localStorage.getItem("optica-mia-orders") || "[]");
     existing.unshift(order);

@@ -6,6 +6,9 @@ import type { StaticImageData } from "next/image";
 import Link from "next/link";
 import { Trash2, ShoppingCart, ArrowRight, Plus, Minus } from "lucide-react";
 import { useCart } from "../context/CartContextType";
+import RegistroCliente from "../registro/RegistroCliente";
+
+const LS_CUSTOMER_KEY = "optica-mia-customer-data";
 
 export default function CarritoPage() {
   const {
@@ -18,11 +21,49 @@ export default function CarritoPage() {
   } = useCart();
 
   const [isClient, setIsClient] = useState(false);
+  const [showRegistro, setShowRegistro] = useState(false);
+  const [pagoExitoso, setPagoExitoso] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsClient(true);
   }, []);
+
+  const handlePago = () => {
+    const customerData = localStorage.getItem(LS_CUSTOMER_KEY);
+    if (customerData) {
+      procesarPago(JSON.parse(customerData).id);
+    } else {
+      setShowRegistro(true);
+    }
+  };
+
+  const procesarPago = async (customerId: string) => {
+    setCheckoutLoading(true);
+    try {
+      const items = cartItems.map((item) => ({
+        productId: item.id,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId, items }),
+      });
+      if (!res.ok) throw new Error("Error al crear pedido");
+      setPagoExitoso(true);
+    } catch {
+      alert("Error al procesar el pedido. Intenta de nuevo.");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  const handleRegistroSuccess = (customerId: string) => {
+    setShowRegistro(false);
+    procesarPago(customerId);
+  };
 
   return (
     <main className="w-full min-h-screen bg-[#f8fafc] py-12 px-4">
@@ -166,11 +207,39 @@ export default function CarritoPage() {
               </div>
 
               <button
-                onClick={() => alert("¡Procediendo al pago!")}
-                className="w-full mt-6 bg-[#C39C4E] text-slate-900 font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:opacity-90"
+                onClick={handlePago}
+                disabled={checkoutLoading}
+                className="w-full mt-6 bg-[#C39C4E] text-slate-900 font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50"
               >
-                Proceder al pago
+                {checkoutLoading ? "Procesando..." : "Proceder al pago"}
                 <ArrowRight size={20} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showRegistro && (
+          <RegistroCliente
+            onClose={() => setShowRegistro(false)}
+            onSuccess={handleRegistroSuccess}
+          />
+        )}
+
+        {pagoExitoso && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
+              <h2 className="mb-2 text-2xl font-bold text-gray-800">¡Pedido recibido!</h2>
+              <p className="mb-6 text-sm text-gray-500">
+                Te contactaremos pronto para confirmar tu pedido.
+              </p>
+              <button
+                onClick={() => {
+                  setPagoExitoso(false);
+                  clearCart();
+                }}
+                className="rounded-lg bg-[#D4AF37] px-6 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-[#C39C4E]"
+              >
+                Volver al inicio
               </button>
             </div>
           </div>

@@ -1,20 +1,18 @@
-export interface ProductoData {
-  id: string;
-  name: string;
-  price: number;
-  categoria: string;
-  descripcion: string;
-  color?: string;
+import { prisma } from "@/src/lib/prisma";
+
+export async function getProductos() {
+  return prisma.product.findMany({ orderBy: { name: "asc" } });
 }
 
-const productos: ProductoData[] = [];
-
-export async function getProductos(): Promise<ProductoData[]> {
-  return productos;
+export async function getProductoPorId(id: string) {
+  return prisma.product.findUnique({ where: { id } });
 }
 
-export async function createProducto(data: Omit<ProductoData, 'id'>): Promise<ProductoData> {
-  const producto = { id: String(Date.now()), ...data };
-  productos.push(producto);
-  return producto;
+export async function getProductosPorCategoria(categoria: string) {
+  return prisma.product.findMany({
+    where: { categoria },
+    orderBy: { name: "asc" },
+  });
 }
+
+export type ProductoDTO = Awaited<ReturnType<typeof getProductos>>[number];

@@ -1,4 +1,5 @@
 import logoOpticaMia from "./assets/optica-mia.jpg";
+import foto1SinFondo from './assets/foto1-sin-fondo.png'; 
 import foto1 from './assets/foto1.jpg'; 
 import foto2 from './assets/foto2.jpg'; 
 import foto3 from './assets/foto3.jpg'; 
@@ -31,6 +32,7 @@ import Contacto from "./contacto/contacto";
 import Testimonios from "./testimonios/Testimonios";
 
 const productosInicio = [
+    { id: 'p1',  name: 'Montura',         price: 120000, image: foto1SinFondo,  categoria: 'mujer',  color: 'Transparente', descripcion: '' },
     { id: 'p1',  name: 'Montura Clásica',         price: 120000, image: foto1,  categoria: 'mujer',  color: 'Transparente', descripcion: '' },
     { id: 'p2',  name: 'Montura Rosa',            price: 150000, image: foto2,  categoria: 'mujer',  color: 'Rosa',         descripcion: '' },
     { id: 'p3',  name: 'Montura Dorada',          price: 180000, image: foto3,  categoria: 'mujer',  color: 'Dorado',       descripcion: '' },
