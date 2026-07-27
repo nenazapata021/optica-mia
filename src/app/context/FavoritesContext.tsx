@@ -60,7 +60,10 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loaded || !customerId) return;
     fetch(`/api/favorites?customerId=${customerId}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("API error");
+        return res.json();
+      })
       .then((data) => {
         if (data.favorites) {
           const products = data.favorites.map((f: { product: Producto }) => f.product);
