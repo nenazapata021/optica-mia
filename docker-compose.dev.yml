@@ -1,0 +1,13 @@
+services:
+  app:
+    build:
+      target: dev
+    environment:
+      NODE_ENV: development
+      RUN_SEED: ${RUN_SEED:-false}
+      WATCHPACK_POLLING: "true"
+      APP_MODE: dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: []

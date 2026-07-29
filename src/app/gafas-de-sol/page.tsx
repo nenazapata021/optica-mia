@@ -8,19 +8,19 @@ import gafasDeSol6 from "../assets/gafas de sol6.jpg";
 
 export default function GafasDeSolPage() {
   const misGafasDeSol = [
-    { id: 1, imagen: gafasDeSol1, nombre: "Gafas de Sol Aviador", precio: 150000, categoria: "sol", color: "Negro" },
-    { id: 2, imagen: gafasDeSol2, nombre: "Gafas de Sol Retro", precio: 135000, categoria: "sol", color: "Carey" },
-    { id: 3, imagen: gafasDeSol3, nombre: "Gafas de Sol Cateye Slim", precio: 160000, categoria: "sol", color: "Negro" },
-    { id: 4, imagen: gafasDeSol4, nombre: "Gafas de Sol Deportivas", precio: 145000, categoria: "sol", color: "Azul" },
-    { id: 5, imagen: gafasDeSol5, nombre: "Gafas de Sol Urbanas", precio: 120000, categoria: "sol", color: "Plata" },
-    { id: 6, imagen: gafasDeSol6, nombre: "Gafas de Sol Classic", precio: 130000, categoria: "sol", color: "Dorado" },
+    { id: "gafas-de-sol1", imagen: gafasDeSol1, nombre: "Gafas de Sol Aviador", precio: 150000, categoria: "sol", color: "Negro" },
+    { id: "gafas-de-sol2", imagen: gafasDeSol2, nombre: "Gafas de Sol Retro", precio: 135000, categoria: "sol", color: "Carey" },
+    { id: "gafas-de-sol3", imagen: gafasDeSol3, nombre: "Gafas de Sol Cateye Slim", precio: 160000, categoria: "sol", color: "Negro" },
+    { id: "gafas-de-sol4", imagen: gafasDeSol4, nombre: "Gafas de Sol Deportivas", precio: 145000, categoria: "sol", color: "Azul" },
+    { id: "gafas-de-sol5", imagen: gafasDeSol5, nombre: "Gafas de Sol Urbanas", precio: 120000, categoria: "sol", color: "Plata" },
+    { id: "gafas-de-sol6", imagen: gafasDeSol6, nombre: "Gafas de Sol Classic", precio: 130000, categoria: "sol", color: "Dorado" },
   ];
 
   return (
     <Catalogo 
       titulo="Nuestra Colección de Gafas de Sol"
       descripcion="Protección con estilo. Descubre los mejores diseños para lucir bajo el sol."
-      listaProductos={misGafasDeSol.map(({ id, imagen, nombre, precio, categoria, color }) => ({ id: String(id), image: imagen, name: nombre, price: precio, categoria, color, descripcion: "" }))}
+      listaProductos={misGafasDeSol.map(({ id, imagen, nombre, precio, categoria, color }) => ({ id, image: imagen, name: nombre, price: precio, categoria, color, descripcion: "" }))}
     />
   );
 }

@@ -13,7 +13,16 @@ export async function GET(request: Request) {
       include: { product: true },
       orderBy: { createdAt: "desc" },
     });
-    return NextResponse.json({ favorites });
+
+    const validos = favorites.filter((f) => f.product !== null);
+    const invalidos = favorites.filter((f) => f.product === null);
+    if (invalidos.length > 0) {
+      await prisma.favorite.deleteMany({
+        where: { id: { in: invalidos.map((f) => f.id) } },
+      });
+    }
+
+    return NextResponse.json({ favorites: validos });
   } catch (error) {
     console.error("Favorites GET error:", error);
     return NextResponse.json({ error: "Error al obtener favoritos" }, { status: 500 });

@@ -37,12 +37,15 @@ model Customer {
 }
 
 model Order {
-  id         String      @id @default(cuid())
-  customerId String
-  customer   Customer    @relation(fields: [customerId], references: [id])
-  total      Float
-  status     String      @default("pendiente")
-  createdAt  DateTime    @default(now())
+  id              String      @id @default(cuid())
+  customerId      String
+  customer        Customer    @relation(fields: [customerId], references: [id])
+  total           Float
+  status          String      @default("pendiente")
+  paymentMethod   String?
+  transactionId   String?     @unique
+  wompiStatus     String?
+  createdAt       DateTime    @default(now())
 
   items OrderItem[]
 }

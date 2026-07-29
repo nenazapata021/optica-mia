@@ -3,10 +3,10 @@
 import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { productosLentes, productosGafasSol } from "../data/productos";
-import { ShoppingCart, Package, Sun, Eye, Trash2, BarChart3, Table, ClipboardList, Lock, LogOut } from "lucide-react";
+import { ShoppingCart, Package, Sun, Eye, Trash2, BarChart3, Table, ClipboardList, Mail, LogOut } from "lucide-react";
 import UserProfileIcon from "./UserProfileIcon";
 
-const ADMIN_CODE = "admin123";
+const AUTH_KEY = "optica-mia-auth";
 
 interface Order {
   id: string;
@@ -45,17 +45,37 @@ export default function AdminDashboard() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ nombre: "", precio: "", color: "", categoria: "lentes" });
   const [authed, setAuthed] = useState(false);
-  const [code, setCode] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (code === ADMIN_CODE) {
+  useEffect(() => {
+    if (sessionStorage.getItem(AUTH_KEY) === "1") {
       setAuthed(true);
-      setCode("");
-      setError("");
-    } else {
-      setError("Código incorrecto");
+    }
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setError(data.error || "Correo no autorizado");
+        return;
+      }
+      sessionStorage.setItem(AUTH_KEY, "1");
+      setAuthed(true);
+    } catch {
+      setError("Error de conexión con el servidor");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -70,6 +90,7 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = () => {
+    sessionStorage.removeItem(AUTH_KEY);
     setAuthed(false);
     router.push("/");
   };
@@ -159,25 +180,27 @@ export default function AdminDashboard() {
           <form onSubmit={handleLogin} className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg">
             <div className="mb-6 flex justify-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#D4AF37]">
-                <Lock size={28} className="text-[#D4AF37]" />
+                <Mail size={28} className="text-[#D4AF37]" />
               </div>
             </div>
             <h1 className="mb-1 text-center text-2xl font-bold text-gray-900">Acceso Administrador</h1>
-            <p className="mb-6 text-center text-sm text-gray-500">Ingresa el código de acceso para continuar</p>
+            <p className="mb-6 text-center text-sm text-gray-500">Ingresa el correo autorizado para continuar</p>
             <input
-              type="password"
-              value={code}
-              onChange={(e) => { setCode(e.target.value); setError(""); }}
-              placeholder="Código de acceso"
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(""); }}
+              placeholder="admin@ejemplo.com"
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]"
               autoFocus
+              disabled={loading}
             />
             {error && <p className="mt-1.5 text-xs text-red-500">{error}</p>}
             <button
               type="submit"
-              className="mt-4 w-full rounded-lg bg-[#D4AF37] py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-[#C39C4E]"
+              disabled={loading}
+              className="mt-4 w-full rounded-lg bg-[#D4AF37] py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-[#C39C4E] disabled:opacity-50"
             >
-              Ingresar
+              {loading ? "Verificando..." : "Ingresar"}
             </button>
           </form>
         </div>
