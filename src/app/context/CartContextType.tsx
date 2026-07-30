@@ -6,6 +6,8 @@ import { type Producto } from "../types/producto";
 // 1. Definir la interfaz para un item en el carrito
 export interface CartItem extends Producto {
   quantity: number;
+  lensType?: string;
+  color?: string;
 }
 
 // 2. Definir la interfaz para el valor del contexto
@@ -13,11 +15,12 @@ export interface CartContextType {
   cartItems: CartItem[];
   totalPrice: number;
   totalItems: number;
-  addToCart: (producto: Producto) => void;
+  addToCart: (producto: Producto, lensType?: string, color?: string) => void;
   removeFromCart: (id: string) => void;
   clearCart: () => void;
   increaseQuantity: (id: string) => void;
   decreaseQuantity: (id: string) => void;
+  updateItemColor: (id: string, color: string) => void;
 }
 
 // 3. Crear el contexto con un valor inicial undefined
@@ -58,19 +61,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [cartItems]);
 
-  const addToCart = (producto: Producto) => {
+  const addToCart = (producto: Producto, lensType?: string, color?: string) => {
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === producto.id);
       if (existingItem) {
-        // Si ya existe, incrementa la cantidad
         return prevItems.map((item) =>
           item.id === producto.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
-      // Si no existe, lo añade con cantidad 1
-      return [...prevItems, { ...producto, quantity: 1 }];
+      return [...prevItems, { ...producto, quantity: 1, lensType, color }];
     });
   };
 
@@ -96,6 +97,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const updateItemColor = (id: string, color: string) => {
+    setCartItems((prevItems) =>
+      prevItems.map((item) =>
+        item.id === id ? { ...item, color } : item
+      )
+    );
+  };
+
   const increaseQuantity = (id: string) => updateQuantity(id, 1);
   const decreaseQuantity = (id: string) => updateQuantity(id, -1);
 
@@ -117,6 +126,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     clearCart,
     increaseQuantity,
     decreaseQuantity,
+    updateItemColor,
   };
 
   return (

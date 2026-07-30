@@ -66,9 +66,19 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       })
       .then((data) => {
         if (data.favorites) {
-          const products = data.favorites.map((f: { product: Producto }) => f.product);
-          setFavorites(products);
-          saveLocalFavorites(products);
+          const apiProducts = data.favorites.map((f: { product: Producto }) => f.product);
+          setFavorites((prev) => {
+            const merged = new Map<string, Producto>();
+            apiProducts.forEach((p: Producto) => merged.set(p.id, p));
+            prev.forEach((p: Producto) => {
+              if (!merged.has(p.id)) {
+                merged.set(p.id, p);
+              }
+            });
+            const result = Array.from(merged.values());
+            saveLocalFavorites(result);
+            return result;
+          });
         }
       })
       .catch(() => {});

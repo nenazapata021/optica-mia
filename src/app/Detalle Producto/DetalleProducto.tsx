@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart } from "../context/CartContextType";
+import { useFavorites } from "../context/FavoritesContext";
 import { type Producto } from "../types/producto";
 import { toast } from "sonner";
 import { Heart, Share2, ShoppingCart, Check, ScanFace } from "lucide-react";
@@ -18,8 +19,9 @@ export default function DetalleProducto({ producto }: DetalleProductoProps) {
   const [colorSeleccionado, setColorSeleccionado] = useState(producto.color?.split('/')[0]);
   const [mostrarModal, setMostrarModal] = useState(false); // Estado para el modal
   
-  const { addToCart } = useCart();
-  const router = useRouter();
+const { addToCart } = useCart();
+   const { toggleFavorite, isFavorite } = useFavorites();
+   const router = useRouter();
 
   if (!producto) return null; // Guarda por si el producto no llega
 
@@ -141,12 +143,13 @@ export default function DetalleProducto({ producto }: DetalleProductoProps) {
                 Probar en Simulador
               </button>
               <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => toast.info("Agregado a favoritos (función en desarrollo)")}
+                  <button
+                  onClick={() => toggleFavorite(producto)}
                   className="w-full flex items-center justify-center gap-2 rounded-xl py-3 font-semibold text-slate-700 bg-white border border-slate-300 transition hover:bg-slate-100 active:scale-[0.98]"
+                  aria-label={isFavorite(producto.id) ? "Quitar de favoritos" : "Agregar a favoritos"}
                 >
-                  <Heart size={20} />
-                  Favoritos
+                  <Heart size={20} className={isFavorite(producto.id) ? "fill-red-500 text-red-500" : ""} />
+                  {isFavorite(producto.id) ? "Quitar de Favoritos" : "Agregar a Favoritos"}
                 </button>
                 <button
                   onClick={() => toast.info("Enlace copiado (función en desarrollo)")}

@@ -144,7 +144,49 @@ export default function AdminDashboard() {
     });
   };
 
-  const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
+  const COLOR_MAP: Record<string, string> = {
+  Negro: "#1a1a1a",
+  Plata: "#C0C0C0",
+  Dorado: "#D4AF37",
+  Plateado: "#A8A9AD",
+  Cobre: "#B87333",
+  Rojo: "#C0392B",
+  Azul: "#2980B9",
+  Blanco: "#F5F5F5",
+  Miel: "#D4A017",
+  Carey: "#C4A882",
+  Transparente: "#E8E8E8",
+  Rosa: "#FFB6C1",
+  "Azul claro": "#87CEEB",
+  Grafito: "#4a4a4a",
+  Personalizado: "#888888",
+};
+
+function colorToHex(color: string): string {
+  if (isValidHex(color)) return color;
+  const trimmed = color.trim();
+  if (COLOR_MAP[trimmed]) return COLOR_MAP[trimmed];
+  const lower = trimmed.toLowerCase();
+  for (const [key, hex] of Object.entries(COLOR_MAP)) {
+    if (key.toLowerCase() === lower) return hex;
+  }
+  const parts = trimmed.split("/").map((c) => c.trim());
+  for (const part of parts) {
+    if (COLOR_MAP[part]) return COLOR_MAP[part];
+  }
+  return "#cccccc";
+}
+
+function isValidHex(hex: string): boolean {
+  return /^#[0-9A-Fa-f]{6}$/.test(hex);
+}
+
+function hexToColorName(hex: string): string {
+  const entry = Object.entries(COLOR_MAP).find(([, v]) => v.toLowerCase() === hex.toLowerCase());
+  return entry ? entry[0] : hex;
+}
+
+const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
 
   const stats = [
     {
@@ -285,13 +327,22 @@ export default function AdminDashboard() {
                               className="w-full rounded border px-2 py-1 text-sm"
                             />
                           </td>
-                          <td className="px-4 py-3">
-                            <input
-                              value={form.color}
-                              onChange={(e) => setForm({ ...form, color: e.target.value })}
-                              className="w-full rounded border px-2 py-1 text-sm"
-                            />
-                          </td>
+                           <td className="px-4 py-3">
+                             <div className="flex items-center gap-2">
+                               <input
+                                 type="color"
+                                 value={isValidHex(form.color) ? form.color : "#000000"}
+                                 onChange={(e) => setForm({ ...form, color: hexToColorName(e.target.value) })}
+                                 className="h-8 w-8 rounded border border-gray-300 cursor-pointer p-0"
+                                 title="Seleccionar color"
+                               />
+                               <input
+                                 value={form.color}
+                                 onChange={(e) => setForm({ ...form, color: e.target.value })}
+                                 className="flex-1 rounded border px-2 py-1 text-sm"
+                               />
+                             </div>
+                           </td>
                           <td className="px-4 py-3">
                             <select
                               value={form.categoria}
@@ -335,7 +386,14 @@ export default function AdminDashboard() {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-gray-600">{getProductColor(p)}</td>
+                           <td className="px-4 py-3 text-gray-600 flex items-center gap-2">
+                             <span
+                               className="inline-block h-4 w-4 rounded-full border border-gray-300"
+                               style={{ backgroundColor: colorToHex(getProductColor(p)) }}
+                               title={getProductColor(p)}
+                             />
+                             {getProductColor(p)}
+                           </td>
                           <td className="px-4 py-3">
                             <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                               p.categoria === "lentes" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"

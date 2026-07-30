@@ -4,9 +4,10 @@ export interface Producto {
   id: string;
   name: string;
   price: number;
-  image: StaticImageData | string | Array<StaticImageData | string>; // Puede ser una o varias imágenes
+  image: StaticImageData | string | Array<StaticImageData | string>;
   categoria: string;
   descripcion: string;
   modelo?: string;
   color?: string;
+  imagenMontura?: StaticImageData | string;
 }

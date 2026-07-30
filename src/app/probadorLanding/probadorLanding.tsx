@@ -80,6 +80,7 @@ export default function ProbadorLanding() {
         <ModalProbador
           producto={productoParaProbar}
           onClose={() => setProductoParaProbar(null)}
+          listaMonturas={filtrados}
         />
       )}
       <div className="w-full min-h-screen bg-[#e2f1ee] py-10 px-4">

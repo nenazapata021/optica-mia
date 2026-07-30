@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { type Producto } from "../types/producto";
 import ProductInfo from "../producto info/ProductInfo";
 import Carousel from "../carousel/carousel";
-import { Download } from "lucide-react";
+import { useFaceDetection } from "../hooks/useFaceDetection";
+import { useCanvasRenderer } from "../hooks/useCanvasRenderer";
+import { Download, AlertTriangle } from "lucide-react";
 
 interface DatosSimulacion {
   fotoUrl: string;
@@ -12,11 +14,15 @@ interface DatosSimulacion {
 }
 
 export default function SimulacionVirtual() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [datos, setDatos] = useState<DatosSimulacion | null>(null);
   const [cargandoDatos, setCargandoDatos] = useState(true);
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState("");
+  const [statusText, setStatusText] = useState("");
+  const [usedFallback, setUsedFallback] = useState(false);
+
+  const { detectFromImage, loadModel } = useFaceDetection();
+  const { canvasRef: rendererCanvasRef, render, renderFallback } = useCanvasRenderer();
 
   useEffect(() => {
     try {
@@ -25,75 +31,52 @@ export default function SimulacionVirtual() {
         setDatos(JSON.parse(guardado) as DatosSimulacion);
       }
     } catch {
-      // ignore
+      setError("No se pudo cargar la simulación.");
     }
     setCargandoDatos(false);
   }, []);
 
-  useEffect(() => {
-    if (!datos) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const iniciarIA = useCallback(
+    async (fotoUrl: string, overlayUrl: string) => {
+      setProcesando(true);
+      setError("");
+      setUsedFallback(false);
+      setStatusText("Cargando inteligencia artificial...");
 
-    let cancelado = false;
-    setProcesando(true);
-    setError("");
-
-    const faceImg = new Image();
-    const glassesImg = new Image();
-    let cargadas = 0;
-
-    function componer() {
-      if (cargadas < 2 || cancelado) return;
-      const c = canvasRef.current;
-      if (!c) return;
-
-      const maxW = 800;
-      let w = faceImg.naturalWidth;
-      let h = faceImg.naturalHeight;
-      if (w > maxW) {
-        h = Math.round((h / w) * maxW);
-        w = maxW;
+      const modelErr = await loadModel();
+      if (modelErr) {
+        setStatusText("No se pudo cargar la IA. Usando posición automática.");
+        setUsedFallback(true);
+        await renderFallback(fotoUrl, overlayUrl);
+        setProcesando(false);
+        return;
       }
 
-      c.width = w;
-      c.height = h;
-      const ctx = c.getContext("2d");
-      if (!ctx) { setError("Error al crear el canvas"); setProcesando(false); return; }
+      setStatusText("Detectando tu rostro...");
+      const result = await detectFromImage(fotoUrl);
 
-      ctx.drawImage(faceImg, 0, 0, w, h);
+      if ("error" in result) {
+        setStatusText("No se detectó el rostro. Usando posición estimada.");
+        setUsedFallback(true);
+        await renderFallback(fotoUrl, overlayUrl);
+      } else {
+        setUsedFallback(false);
+        await render(fotoUrl, overlayUrl, result.landmarks);
+      }
 
-      const centerX = 0.5;
-      const centerY = 0.37;
-      const glassesWidth = 0.65;
+      setProcesando(false);
+    },
+    [loadModel, detectFromImage, render, renderFallback]
+  );
 
-      const targetW = Math.round(glassesWidth * w);
-      const aspect = glassesImg.naturalHeight / glassesImg.naturalWidth;
-      const targetH = Math.round(targetW * aspect);
-
-      const x = Math.round(centerX * w - targetW / 2);
-      const y = Math.round(centerY * h - targetH / 2);
-
-      ctx.globalCompositeOperation = "multiply";
-      ctx.drawImage(glassesImg, x, y, targetW, targetH);
-      ctx.globalCompositeOperation = "source-over";
-
-      if (!cancelado) { setProcesando(false); }
-    }
-
-    faceImg.onload = () => { cargadas++; componer(); };
-    faceImg.onerror = () => { if (!cancelado) { setError("No se pudo cargar tu foto."); setProcesando(false); } };
-    glassesImg.onload = () => { cargadas++; componer(); };
-    glassesImg.onerror = () => { if (!cancelado) { setError("No se pudo cargar la imagen de la montura."); setProcesando(false); } };
-
-    faceImg.src = datos.fotoUrl;
-    glassesImg.src = datos.producto.image;
-
-    return () => { cancelado = true; };
+  useEffect(() => {
+    if (!datos) return;
+    const overlayUrl = datos.producto.image;
+    iniciarIA(datos.fotoUrl, overlayUrl);
   }, [datos]);
 
   const descargar = () => {
-    const canvas = canvasRef.current;
+    const canvas = rendererCanvasRef.current;
     if (!canvas) return;
     const enlace = document.createElement("a");
     enlace.download = "simulacion-optica-mia.jpg";
@@ -125,17 +108,24 @@ export default function SimulacionVirtual() {
       <div className="mx-auto grid max-w-7xl gap-12 px-4 lg:grid-cols-2">
         <div>
           <div className="relative overflow-hidden rounded-2xl border-4 border-[#005f6b] bg-slate-100 shadow-lg">
-            <canvas ref={canvasRef} className="block h-auto w-full" />
+            <canvas ref={rendererCanvasRef} className="block h-auto w-full" />
 
             {procesando && (
               <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm">
                 <div className="flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-lg">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#008294] border-t-transparent" />
-                  <span className="text-xs font-medium text-slate-700">Generando simulaci&oacute;n...</span>
+                  <span className="text-xs font-medium text-slate-700">{statusText}</span>
                 </div>
               </div>
             )}
           </div>
+
+          {usedFallback && !procesando && (
+            <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+              <span>Posici&oacute;n estimada. Para mejor resultado, usa una foto frontal con buena iluminaci&oacute;n.</span>
+            </div>
+          )}
 
           <div className="mt-4 flex gap-3">
             <button

@@ -8,6 +8,7 @@ import { useFavorites } from "../context/FavoritesContext";
 import { type Producto } from "../types/producto";
 import { Heart } from "lucide-react";
 import ModalProbador from "../modal probador/modalProbador";
+import TipoLenteModal from "../tipo-lente/TipoLenteModal";
 
 interface CatalogoProps {
   titulo: string;
@@ -30,6 +31,7 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
   const { toggleFavorite, isFavorite } = useFavorites();
   const [filtro, setFiltro] = useState("todos");
   const [productoParaProbar, setProductoParaProbar] = useState<Producto | null>(null);
+  const [productoParaLentes, setProductoParaLentes] = useState<Producto | null>(null);
   const router = useRouter();
 
   const productosFiltrados = listaProductos.filter((p) => {
@@ -39,17 +41,29 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
 
   const categorias = ["todos", ...Array.from(new Set(listaProductos.map(p => p.categoria)))];
 
-  const handleAddToCart = (producto: Producto) => {
+  const todosLosColores = Array.from(
+    new Set(
+      listaProductos.flatMap((p) => (p.color?.split("/") ?? []).map((c) => c.trim()).filter(Boolean))
+    )
+  );
+
+  const handleSeleccionarMontura = (producto: Producto) => {
+    setProductoParaLentes(producto);
+  };
+
+  const handleLensSelect = (tipo: string, color?: string) => {
+    if (!productoParaLentes) return;
+    const producto = productoParaLentes;
     const productoParaCarrito = {
       ...producto,
       image: Array.isArray(producto.image) ? producto.image[0] : producto.image,
     };
-    addToCart(productoParaCarrito);
+    addToCart(productoParaCarrito, tipo, color);
 
     const customerData = JSON.parse(localStorage.getItem("optica-mia-customer-data") || "null");
     const order = {
       id: crypto.randomUUID(),
-      items: [{ productId: producto.id, name: producto.name, quantity: 1, price: producto.price }],
+      items: [{ productId: producto.id, name: producto.name, quantity: 1, price: producto.price, lensType: tipo, color }],
       total: producto.price,
       date: new Date().toISOString(),
       customer: customerData?.nombre || "Cliente web",
@@ -58,6 +72,7 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
     existing.unshift(order);
     localStorage.setItem("optica-mia-orders", JSON.stringify(existing));
 
+    setProductoParaLentes(null);
     router.push("/carrito");
   };
 
@@ -72,6 +87,15 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
         <ModalProbador
           producto={productoParaProbar}
           onClose={() => setProductoParaProbar(null)}
+          listaMonturas={listaProductos}
+        />
+      )}
+      {productoParaLentes && (
+        <TipoLenteModal
+          producto={productoParaLentes}
+          colores={todosLosColores}
+          onSelect={handleLensSelect}
+          onClose={() => setProductoParaLentes(null)}
         />
       )}
       <div className="w-full min-h-screen bg-slate-50 py-10 px-4">
@@ -145,7 +169,7 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
                     🕶️ Probar simulador
                   </button>
                   <button
-                    onClick={() => handleAddToCart(producto)}
+                    onClick={() => handleSeleccionarMontura(producto)}
                     className="w-full py-2.5 rounded-lg font-semibold text-white bg-[#D4AF37] hover:bg-[#D4AF37] transition-colors"
                   >
                     Seleccionar Montura
