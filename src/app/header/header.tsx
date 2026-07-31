@@ -43,6 +43,7 @@ export default function Header() {
           <Link href="/lentes" className="font-medium text-[#C39C4E] transition hover:text-white md:font-semibold">Lentes</Link>
           <Link href="/gafas-de-sol" className="font-medium text-[#C39C4E] transition hover:text-white md:font-semibold">Gafas de Sol</Link>
           <Link href="/probador-landing" className="font-medium text-[#C39C4E] transition hover:text-white md:font-semibold">Probador Virtual</Link>
+          <Link href="/ubicacion" className="font-medium text-[#C39C4E] transition hover:text-white md:font-semibold">Ubicación</Link>
         </nav>
 
         {/* Carrito y Favoritos */}
