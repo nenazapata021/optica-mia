@@ -179,42 +179,42 @@ export const productosLentes = [
 
 export const productosGafasSol = [
   {
-    id: "gafas de sol1",
+    id: "gafas-de-sol1",
     nombre: "Gafas de Sol Aviador",
     precio: 210000,
     color: "Negro",
     imagen: gafasDeSol1
   },
   {
-    id: "gafas de sol2",
+    id: "gafas-de-sol2",
     nombre: "Gafas de Sol Retro",
     precio: 135000,
     color: "Carey",
     imagen: gafasDeSol2
   },
   {
-    id: "gafas de sol3",
+    id: "gafas-de-sol3",
     nombre: "Gafas de Sol Cateye Slim",
     precio: 160000,
     color: "Negro",
     imagen: gafasDeSol3
   },
   {
-    id: "gafas de sol4",
+    id: "gafas-de-sol4",
     nombre: "Gafas de Sol Deportivas",
     precio: 145000,
     color: "Azul",
     imagen: gafasDeSol4
   },
   {
-    id: "gafas de sol5",
+    id: "gafas-de-sol5",
     nombre: "Gafas de Sol Urbanas",
     precio: 120000,
     color: "Plata",
     imagen: gafasDeSol5
   },
   {
-    id: "gafas de sol6",
+    id: "gafas-de-sol6",
     nombre: "Gafas de Sol Classic",
     precio: 130000,
     color: "Dorado",

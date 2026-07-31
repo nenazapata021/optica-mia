@@ -4,7 +4,7 @@ import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { productosLentes, productosGafasSol } from "../data/productos";
 import { ShoppingCart, Package, Sun, Eye, Trash2, BarChart3, Table, ClipboardList, Mail, LogOut } from "lucide-react";
-import UserProfileIcon from "./UserProfileIcon";
+import Logo from "../components/Logo";
 
 const AUTH_KEY = "optica-mia-auth";
 
@@ -249,9 +249,9 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
       ) : (
         <Fragment>
       <aside className="flex w-16 flex-col items-center gap-6 border-r border-gray-200 bg-white py-6 shadow-sm md:w-20 lg:w-64 lg:items-start lg:px-4">
-        <div className="flex w-full justify-center lg:justify-start lg:px-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-black">
-            <UserProfileIcon size={22} />
+          <div className="flex w-full justify-center lg:justify-start lg:px-2">
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-black">
+            <Logo size={40} />
           </div>
         </div>
         <nav className="flex w-full flex-col gap-1">

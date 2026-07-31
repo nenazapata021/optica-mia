@@ -76,3 +76,14 @@ model Favorite {
   @@index([customerId])
   @@index([productId])
 }
+
+model Sede {
+  id        String   @id @default(cuid())
+  nombre    String
+  direccion String
+  lat       Float
+  lng       Float
+  horario   String   @default("Lunes a Sábados 8:00 - 18:00")
+  telefono  String?
+  createdAt DateTime @default(now())
+}

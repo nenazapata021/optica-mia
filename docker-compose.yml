@@ -36,6 +36,11 @@ services:
       RUN_SEED: ${RUN_SEED:-false}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@optica-mia.com}
       NODE_ENV: production
+      WOMPI_API_URL: ${WOMPI_API_URL:-https://sandbox.wompi.co/v1}
+      WOMPI_PUBLIC_KEY: ${WOMPI_PUBLIC_KEY:-}
+      WOMPI_PRIVATE_KEY: ${WOMPI_PRIVATE_KEY:-}
+      WOMPI_INTEGRITY_KEY: ${WOMPI_INTEGRITY_KEY:-}
+      WOMPI_EVENT_SECRET: ${WOMPI_EVENT_SECRET:-}
     depends_on:
       postgres:
         condition: service_healthy

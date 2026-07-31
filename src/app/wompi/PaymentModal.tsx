@@ -99,9 +99,11 @@ export default function PaymentModal({
         setStep("qr");
       } else if (
         (method === "ADDI" || method === "SISTECREDITO") &&
-        data.transaction.redirectUrl
+        (data.transaction.paymentUrl || data.transaction.redirectUrl)
       ) {
-        setRedirectUrl(data.transaction.redirectUrl);
+        setRedirectUrl(
+          data.transaction.paymentUrl ?? data.transaction.redirectUrl
+        );
         setStep("success");
       } else {
         setStep("success");

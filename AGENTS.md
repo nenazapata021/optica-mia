@@ -23,6 +23,7 @@ No tests or CI exist.
 | `/gafas-de-sol` | `src/app/gafas-de-sol/page.tsx` |
 | `/carrito` | `src/app/carrito/page.tsx` |
 | `/probador` | `src/app/probador/page.tsx` |
+| `/demo/pago` | `src/app/demo/pago/page.tsx` (simula aprobar pago Addi/Sistecredito en modo demo) |
 
 Dead link: header references `/probador-landing` — no route file exists.
 

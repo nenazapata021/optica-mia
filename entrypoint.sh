@@ -19,7 +19,7 @@ npx --no-install prisma migrate deploy
 
 if [ "$RUN_SEED" = "true" ]; then
   echo "Running seed..."
-  ./node_modules/.bin/tsx prisma/seed.ts 2>/dev/null || echo "Seed skipped (tsx not available)"
+  tsx prisma/seed.ts 2>/dev/null || echo "Seed skipped (tsx not available)"
 fi
 
 if [ "$APP_MODE" = "dev" ]; then

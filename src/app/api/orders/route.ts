@@ -3,11 +3,30 @@ import { prisma } from "@/src/lib/prisma";
 
 export async function POST(request: Request) {
   try {
-    const { customerId, items } = await request.json();
+    const {
+      customerId,
+      items,
+    }: {
+      customerId: string;
+      items: Array<{ productId: string; quantity: number; price: number }>;
+    } = await request.json();
     if (!customerId || !items?.length) {
       return NextResponse.json({ error: "customerId e items requeridos" }, { status: 400 });
     }
     const total = items.reduce((sum: number, item: { price: number; quantity: number }) => sum + item.price * item.quantity, 0);
+    const productIds = items.map((item: { productId: string }) => item.productId);
+    const existingProducts = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true },
+    });
+    const existingIds = new Set(existingProducts.map((p) => p.id));
+    const missingIds = [...new Set(productIds)].filter((id) => !existingIds.has(id));
+    if (missingIds.length > 0) {
+      return NextResponse.json(
+        { error: `Productos inexistentes en el catálogo: ${missingIds.join(", ")}`, missingIds },
+        { status: 400 }
+      );
+    }
     const order = await prisma.order.create({
       data: {
         customerId,

@@ -43,6 +43,8 @@ RUN chmod +x /entrypoint.sh \
     prisma@$(node -p "require('./package.json').devDependencies.prisma.replace('^','')") \
   && npm install -g \
     tsx@$(node -p "require('./package.json').devDependencies.tsx.replace('^','')") \
+  && npm install --no-save \
+    postgres-array@$(node -p "require('./node_modules/postgres-array/package.json').version") \
   && chown -R nextjs:nodejs /app
 
 USER nextjs

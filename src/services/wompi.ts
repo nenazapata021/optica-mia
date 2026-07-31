@@ -19,6 +19,8 @@ export interface CreateTransactionParams {
   reference: string;
   currency?: string;
   customer: WompiCustomer;
+  acceptanceToken: string;
+  acceptPersonalAuth: string;
   paymentMethod:
     | { type: "NEQUI" }
     | { type: "ADDI"; installments?: number }
@@ -34,6 +36,7 @@ export interface WompiTransaction {
   paymentMethodType: string;
   nequiQrUrl?: string;
   redirectUrl?: string;
+  paymentUrl?: string;
 }
 
 function generateSignature(
@@ -45,7 +48,7 @@ function generateSignature(
   return crypto.createHash("sha256").update(text).digest("hex");
 }
 
-class WompiApiError extends Error {
+export class WompiApiError extends Error {
   constructor(
     message: string,
     public status: number,
@@ -54,6 +57,28 @@ class WompiApiError extends Error {
     super(message);
     this.name = "WompiApiError";
   }
+}
+
+export function getWompiErrorMessage(error: unknown): string {
+  if (error instanceof WompiApiError) {
+    const body = error.body as
+      | { error?: { reason?: string; messages?: Record<string, unknown> } }
+      | undefined;
+    const firstMessage = body?.error?.messages
+      ? Object.values(body.error.messages)[0]
+      : undefined;
+    if (Array.isArray(firstMessage) && firstMessage.length) {
+      return String(firstMessage[0]);
+    }
+    if (typeof firstMessage === "string") {
+      return firstMessage;
+    }
+    if (typeof body?.error?.reason === "string" && body.error.reason) {
+      return body.error.reason;
+    }
+    return `Wompi API error (${error.status})`;
+  }
+  return error instanceof Error ? error.message : "Error al procesar el pago";
 }
 
 async function wompiFetch<T>(
@@ -93,8 +118,15 @@ export async function getMerchantInfo(): Promise<{
 export async function createTransaction(
   params: CreateTransactionParams
 ): Promise<{ data: WompiTransaction }> {
-  const { amountInCents, reference, customer, paymentMethod, redirectUrl } =
-    params;
+  const {
+    amountInCents,
+    reference,
+    customer,
+    paymentMethod,
+    redirectUrl,
+    acceptanceToken,
+    acceptPersonalAuth,
+  } = params;
   const currency = params.currency ?? "COP";
 
   const signature = generateSignature(reference, amountInCents, currency);
@@ -104,6 +136,9 @@ export async function createTransaction(
     currency,
     reference,
     signature: signature,
+    customer_email: customer.email,
+    acceptance_token: acceptanceToken,
+    accept_personal_auth: acceptPersonalAuth,
     customer_information: {
       email: customer.email,
       full_name: customer.full_name,
@@ -136,7 +171,10 @@ export async function createTransaction(
       status: string;
       amount_in_cents: number;
       reference: string;
-      payment_method: { type: string; extra?: { nequi_qr_url?: string } };
+      payment_method: {
+        type: string;
+        extra?: { nequi_qr_url?: string; url?: string };
+      };
       redirect_url?: string;
     };
   }>("/transactions", {
@@ -154,6 +192,7 @@ export async function createTransaction(
       paymentMethodType: tx.payment_method.type,
       nequiQrUrl: tx.payment_method.extra?.nequi_qr_url,
       redirectUrl: tx.redirect_url,
+      paymentUrl: tx.payment_method.extra?.url,
     },
   };
 }
@@ -167,7 +206,10 @@ export async function getTransaction(
       status: string;
       amount_in_cents: number;
       reference: string;
-      payment_method: { type: string; extra?: { nequi_qr_url?: string } };
+      payment_method: {
+        type: string;
+        extra?: { nequi_qr_url?: string; url?: string };
+      };
       redirect_url?: string;
     };
   }>(`/transactions/${transactionId}`);
@@ -182,6 +224,7 @@ export async function getTransaction(
       paymentMethodType: tx.payment_method.type,
       nequiQrUrl: tx.payment_method.extra?.nequi_qr_url,
       redirectUrl: tx.redirect_url,
+      paymentUrl: tx.payment_method.extra?.url,
     },
   };
 }
