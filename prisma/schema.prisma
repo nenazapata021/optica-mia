@@ -30,7 +30,8 @@ model Customer {
   email     String   @unique
   telefono  String
   direccion String
-  createdAt DateTime @default(now())
+  hasCompletedOnboarding Boolean @default(false)
+  createdAt              DateTime @default(now())
 
   orders    Order[]
   favorites Favorite[]

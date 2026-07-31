@@ -1,0 +1,1 @@
+ALTER TABLE "Customer" ADD COLUMN "hasCompletedOnboarding" BOOLEAN NOT NULL DEFAULT false;

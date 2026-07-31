@@ -1,24 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Sparkles, ChevronRight, X } from "lucide-react";
+import { useState } from "react";
+import { ChevronRight, X } from "lucide-react";
 
-const LS_FIRST_VISIT_KEY = "optica-mia-first-visit";
+const LS_ONBOARDING_KEY = "optica-mia-onboarding-complete";
 
-export default function WelcomeFormPage() {
-  const router = useRouter();
+interface WelcomeFormModalProps {
+  onClose: () => void;
+  onComplete: () => void;
+}
+
+export default function WelcomeFormModal({ onClose, onComplete }: WelcomeFormModalProps) {
   const [step, setStep] = useState<"form" | "done">("form");
   const [form, setForm] = useState({ nombre: "", email: "", telefono: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const completed = localStorage.getItem(LS_FIRST_VISIT_KEY);
-    if (completed) {
-      router.replace("/");
-    }
-  }, [router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -42,7 +38,7 @@ export default function WelcomeFormPage() {
       const data = await res.json();
       const customerData = { ...form, id: data.id };
       localStorage.setItem("optica-mia-customer-data", JSON.stringify(customerData));
-      localStorage.setItem(LS_FIRST_VISIT_KEY, "true");
+      localStorage.setItem(LS_ONBOARDING_KEY, "true");
       setStep("done");
     } catch {
       setError("Error al conectar con el servidor. Intenta de nuevo.");
@@ -52,18 +48,15 @@ export default function WelcomeFormPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#f8fafc] to-white px-4">
-      <div className="relative w-full max-w-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+      <div className="relative w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600" aria-label="Cerrar">
+          <X size={20} />
+        </button>
+
         <div className="mx-auto mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#D4AF37]/10">
-            <Sparkles size={28} className="text-[#D4AF37]" />
-          </div>
-          <h1 className="text-center text-2xl font-bold text-gray-800">
-            Bienvenido a Óptica Mía
-          </h1>
-          <p className="text-center text-sm text-gray-500">
-            Completa tus datos para comenzar
-          </p>
+          <h1 className="text-center text-2xl font-bold text-gray-800">Bienvenido a Óptica Mía</h1>
+          <p className="text-center text-sm text-gray-500">Completa tus datos para comenzar</p>
         </div>
 
         {step === "form" ? (
@@ -92,9 +85,7 @@ export default function WelcomeFormPage() {
               placeholder="Teléfono (opcional)"
               className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
             />
-
             {error && <p className="text-xs text-red-500">{error}</p>}
-
             <button
               type="submit"
               disabled={loading}
@@ -117,28 +108,16 @@ export default function WelcomeFormPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-gray-800">
-              ¡Todo listo!
-            </h2>
-            <p className="text-center text-sm text-gray-500">
-              {form.nombre}, gracias por registrarte. Ya puedes explorar nuestros productos.
-            </p>
+            <h2 className="text-xl font-bold text-gray-800">¡Todo listo!</h2>
+            <p className="text-center text-sm text-gray-500">{form.nombre}, gracias por registrarte. Ya puedes explorar nuestros productos.</p>
             <button
-              onClick={() => router.push("/")}
+              onClick={onComplete}
               className="mt-2 w-full rounded-lg bg-[#D4AF37] py-3 text-sm font-semibold text-slate-900 transition hover:bg-[#C39C4E]"
             >
               Ir a la tienda
             </button>
           </div>
         )}
-
-        <button
-          onClick={() => router.push("/")}
-          className="absolute -top-2 right-0 text-gray-400 hover:text-gray-600"
-          aria-label="Cerrar"
-        >
-          <X size={20} />
-        </button>
       </div>
     </div>
   );

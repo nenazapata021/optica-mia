@@ -1,7 +1,3 @@
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import logoOpticaMia from "./assets/optica-mia.jpg";
 import foto1SinFondo from './assets/foto1-sin-fondo.png'; 
 import foto1 from './assets/foto1.jpg'; 
@@ -61,15 +57,6 @@ const productosInicio = [
   ];
 
 export default function Home() {
-  const router = useRouter();
-
-  useEffect(() => {
-    const firstVisit = !localStorage.getItem("optica-mia-first-visit");
-    if (firstVisit) {
-      router.replace("/welcome-form");
-    }
-  }, [router]);
-
   return (
 
       <div className="w-full flex flex-col items-center">

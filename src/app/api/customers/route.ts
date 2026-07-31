@@ -4,13 +4,14 @@ import { prisma } from "@/src/lib/prisma";
 export async function POST(request: Request) {
   try {
     const { nombre, email, telefono, direccion } = await request.json();
-    if (!nombre || !email || !telefono || !direccion) {
-      return NextResponse.json({ error: "Todos los campos son obligatorios" }, { status: 400 });
+    if (!nombre || !email) {
+      return NextResponse.json({ error: "Nombre y correo son obligatorios" }, { status: 400 });
     }
+    const dir = direccion || "";
     const customer = await prisma.customer.upsert({
       where: { email },
-      update: { nombre, telefono, direccion },
-      create: { nombre, email, telefono, direccion },
+      update: { nombre, telefono: telefono || "", direccion: dir, hasCompletedOnboarding: true },
+      create: { nombre, email, telefono: telefono || "", direccion: dir, hasCompletedOnboarding: true },
     });
     return NextResponse.json({ id: customer.id, email: customer.email }, { status: 201 });
   } catch (error) {
