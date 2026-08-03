@@ -1,32 +1,32 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image"; 
 import { type Producto } from "../types/producto";
 import ModalProbador from "../modal probador/modalProbador";
 
 // Importación de imágenes locales
-import foto1 from '../assets/foto1.jpg';
-import foto2 from '../assets/foto2.jpg';
-import foto3 from '../assets/foto3.jpg';
-import foto4 from '../assets/foto4.jpg';
-import foto5 from '../assets/foto5.jpg';
-import foto6 from '../assets/foto6.jpg';
-import foto7 from '../assets/foto7.jpg';
-import foto8 from '../assets/foto8.jpg';
-import foto9 from '../assets/foto9.jpg';
-import foto10 from '../assets/foto10.jpg';
-import foto11 from '../assets/foto11.jpg';
-import foto12 from '../assets/foto12.jpg';
-import foto13 from '../assets/foto13.jpg';
-import foto14 from '../assets/foto14.jpg';
-import foto15 from '../assets/foto15.jpg';
-import foto16 from '../assets/foto16.jpg';
-import foto17 from '../assets/foto17.jpg';
-import foto18 from '../assets/foto18.jpg';
-import foto19 from '../assets/foto19.jpg';
-import foto20 from '../assets/foto20.jpg';
-import foto21 from '../assets/foto21.jpg';
+import foto1 from '../assets/foto1-sin-fondo.png';
+import foto2 from '../assets/foto2-sin-fondo.png';
+import foto3 from '../assets/foto3-sin-fondo.png';
+import foto4 from '../assets/foto4-sin-fondo.png';
+import foto5 from '../assets/foto5-sin-fondo.png';
+import foto6 from '../assets/foto6-sin-fondo.png';
+import foto7 from '../assets/foto7-sin-fondo.png';
+import foto8 from '../assets/foto8-sin-fondo.png';
+import foto9 from '../assets/foto9-sin-fondo.png';
+import foto10 from '../assets/foto10-sin-fondo.png';
+import foto11 from '../assets/foto11-sin-fondo.png';
+import foto12 from '../assets/foto12-sin-fondo.png';
+import foto13 from '../assets/foto13-sin-fondo.png';
+import foto14 from '../assets/foto14-sin-fondo.png';
+import foto15 from '../assets/foto15-sin-fondo.png';
+import foto16 from '../assets/foto16-sin-fondo.png';
+import foto17 from '../assets/foto17-sin-fondo.png';
+import foto18 from '../assets/foto18-sin-fondo.png';
+import foto19 from '../assets/foto19-sin-fondo.png';
+import foto20 from '../assets/foto20-sin-fondo.png';
+import foto21 from '../assets/foto21-sin-fondo.png';
 
 const todosProd: Producto[] = [
   { id: 'p1',  name: 'Montura Clásica',         price: 120000, image: foto1,  categoria: 'mujer',  color: 'Transparente', descripcion: '' },
@@ -55,6 +55,23 @@ const todosProd: Producto[] = [
 export default function ProbadorLanding() {
   const [categoriaSel, setCategoriaSel] = useState("todos");
   const [productoParaProbar, setProductoParaProbar] = useState<Producto | null>(null);
+  const primerRender = useRef(true);
+
+  useEffect(() => {
+    const guardado = localStorage.getItem("optica-mia-filtro-categoria");
+    if (guardado && categorias.includes(guardado)) {
+      setCategoriaSel(guardado);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (primerRender.current) {
+      primerRender.current = false;
+      return;
+    }
+    localStorage.setItem("optica-mia-filtro-categoria", categoriaSel);
+  }, [categoriaSel]);
 
   const filtrados = todosProd.filter((p) => {
     if (categoriaSel === "todos") return true;

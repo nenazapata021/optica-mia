@@ -11,12 +11,12 @@ import 'swiper/css/pagination';
 // 💡 Quitamos el estilo de effect-fade que ya no usaremos
 
 // Importa las imágenes que se usarán en el carrusel
-import foto1 from '../assets/foto1.jpg';
-import foto2 from '../assets/foto2.jpg';
-import foto3 from '../assets/foto3.jpg';
-import foto4 from '../assets/foto4.jpg';
-import foto5 from '../assets/foto5.jpg';
-import foto6 from '../assets/foto6.jpg';
+import foto1 from '../assets/foto1-sin-fondo.png';
+import foto2 from '../assets/foto2-sin-fondo.png';
+import foto3 from '../assets/foto3-sin-fondo.png';
+import foto4 from '../assets/foto4-sin-fondo.png';
+import foto5 from '../assets/foto5-sin-fondo.png';
+import foto6 from '../assets/foto6-sin-fondo.png';
 
 // Un pequeño CSS para asegurar que la paginación y navegación se vean bien con Tailwind
 const customStyles = `

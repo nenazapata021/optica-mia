@@ -1,10 +1,10 @@
 import Catalogo from "../catalogo/catalogo";
-import gafasDeSol1 from "../assets/gafas de sol1.jpg";
-import gafasDeSol2 from "../assets/gafas de sol2.jpg";
-import gafasDeSol3 from "../assets/gafas de sol3.jpg";
-import gafasDeSol4 from "../assets/gafas de sol4.jpg";
-import gafasDeSol5 from "../assets/gafas de sol5.jpg";
-import gafasDeSol6 from "../assets/gafas de sol6.jpg";
+import gafasDeSol1 from "../assets/gafas de sol1-sin-fondo.png";
+import gafasDeSol2 from "../assets/gafas de sol2-sin-fondo.png";
+import gafasDeSol3 from "../assets/gafas de sol3-sin-fondo.png";
+import gafasDeSol4 from "../assets/gafas de sol4-sin-fondo.png";
+import gafasDeSol5 from "../assets/gafas de sol5-sin-fondo.png";
+import gafasDeSol6 from "../assets/gafas de sol6-sin-fondo.png";
 
 export default function GafasDeSolPage() {
   const misGafasDeSol = [

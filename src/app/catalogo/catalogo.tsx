@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image, { type StaticImageData } from 'next/image';
 import { useRouter } from "next/navigation";
 import { useCart } from "../context/CartContextType";
@@ -33,6 +33,24 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
   const { toggleFavorite, isFavorite } = useFavorites();
   const { check, loading: checkingOnboarding } = useOnboardingCheck();
   const [filtro, setFiltro] = useState("todos");
+  const primerRender = useRef(true);
+
+  useEffect(() => {
+    const guardado = localStorage.getItem("optica-mia-filtro-categoria");
+    const categoriasValidas = ["todos", ...Array.from(new Set(listaProductos.map(p => p.categoria)))];
+    if (guardado && categoriasValidas.includes(guardado)) {
+      setFiltro(guardado);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (primerRender.current) {
+      primerRender.current = false;
+      return;
+    }
+    localStorage.setItem("optica-mia-filtro-categoria", filtro);
+  }, [filtro]);
   const [productoParaProbar, setProductoParaProbar] = useState<Producto | null>(null);
   const [productoParaLentes, setProductoParaLentes] = useState<Producto | null>(null);
   const [productoPendiente, setProductoPendiente] = useState<Producto | null>(null);

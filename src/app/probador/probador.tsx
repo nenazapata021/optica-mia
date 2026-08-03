@@ -6,12 +6,12 @@ import Link from "next/link";
 import { useCart } from "../context/CartContextType";
 import logoOpticaMia from "../assets/optica-mia.jpg";
 import ProductoDestacado from "../producto destacado/ProductoDestacado";
-import foto1 from '../assets/foto1.jpg';
-import foto2 from '../assets/foto2.jpg';
-import foto3 from '../assets/foto3.jpg';
-import foto4 from '../assets/foto4.jpg';
-import foto5 from '../assets/foto5.jpg';
-import foto6 from '../assets/foto6.jpg';
+import foto1 from '../assets/foto1-sin-fondo.png';
+import foto2 from '../assets/foto2-sin-fondo.png';
+import foto3 from '../assets/foto3-sin-fondo.png';
+import foto4 from '../assets/foto4-sin-fondo.png';
+import foto5 from '../assets/foto5-sin-fondo.png';
+import foto6 from '../assets/foto6-sin-fondo.png';
 
 const todosProd = [
   { id: 'p1', nombre: 'Montura Clásica', precio: 120000, imagen: foto1, categoria: 'mujer', color: 'Transparente' },

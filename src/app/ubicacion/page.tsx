@@ -1,13 +1,13 @@
 export const metadata = {
   title: "Ubicación | Óptica Mía",
   description:
-    "Encuéntranos en Envigado, Antioquia. Visítanos y elige tus gafas favoritas.",
+    "Encuéntranos en Itagui, Antioquia. Visítanos y elige tus gafas favoritas.",
 };
 
 const STORE_NAME = "Óptica Mía";
-const STORE_ADDRESS = "Envigado, Antioquia, Colombia";
-const STORE_COORDS = { lat: 6.169505293817813, lng: -75.61524752501005 };
-const GOOGLE_MAPS_URL = `https://www.google.com/maps/dir/?api=1&destination=${STORE_COORDS.lat},${STORE_COORDS.lng}&travelmode=driving`;
+const STORE_ADDRESS = "Itagui, Antioquia, Colombia";
+const STORE_COORDS = { lat: 6.169499839592879, lng: -75.61269963490861 };
+const GOOGLE_MAPS_URL = `https://www.google.com/maps?q=${STORE_COORDS.lat},${STORE_COORDS.lng}&z=16&hl=es`;
 
 export default function UbicacionPage() {
   return (
@@ -21,7 +21,7 @@ export default function UbicacionPage() {
 
       <div className="mb-10 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
         <iframe
-          src={`https://www.google.com/maps/embed?pb=!1m17!1m12!1m3!1d3269.437174439365!2d${STORE_COORDS.lng}!3d${STORE_COORDS.lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m2!1m1!2zNsKwMTAnMTAuMiBOIDc1wrAzNic0NS42Ilc!5e1!3m2!1ses!2sco!4v1!5m2!1ses!2sco`}
+          src={`https://www.google.com/maps?q=${STORE_COORDS.lat},${STORE_COORDS.lng}&z=16&hl=es&output=embed`}
           width="100%"
           height="450"
           className="[border-0]"
@@ -39,8 +39,7 @@ export default function UbicacionPage() {
           </h2>
           <p className="text-sm text-gray-600">
             Te esperamos en nuestra tienda. Usa el botón de abajo para abrir
-            Google Maps y recibir indicaciones de ruta según tu ubicación
-            actual.
+            Google Maps y ver nuestra ubicación exacta.
           </p>
           <a
             href={GOOGLE_MAPS_URL}
