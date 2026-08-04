@@ -1,4 +1,4 @@
-import logoOpticaMia from "./assets/optica-mia.jpg";
+import logoOriginalOpticaMia from "./assets/Logo-optica-mia-original.jpg";
 import foto1SinFondo from './assets/foto1-sin-fondo.png';  
 import foto2SinFondo from './assets/foto2-sin-fondo.png'; 
 import foto3SinFondo from './assets/foto3-sin-fondo.png'; 
@@ -97,7 +97,7 @@ export default function Home() {
           <div className="flex justify-center items-center p-4">
             <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-200 flex items-center justify-center w-64 h-64 md:w-80 md:h-80 transition-transform duration-300 hover:scale-105">
               <Image
-                  src={logoOpticaMia}
+                  src={logoOriginalOpticaMia}
                   alt="Logo Óptica Mia"
                   width={250}
                   height={250}

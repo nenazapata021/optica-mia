@@ -9,8 +9,6 @@ import { type Producto } from "../types/producto";
 import { Heart } from "lucide-react";
 import ModalProbador from "../modal probador/modalProbador";
 import TipoLenteModal from "../tipo-lente/TipoLenteModal";
-import WelcomeFormModal from "../components/WelcomeFormModal";
-import { useOnboardingCheck } from "../hooks/useOnboardingCheck";
 
 interface CatalogoProps {
   titulo: string;
@@ -31,7 +29,7 @@ function getProductImageSrc(image: Producto['image']): string | StaticImageData 
 export default function Catalogo({ titulo, descripcion, listaProductos = [] }: CatalogoProps) {
   const { addToCart } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
-  const { check, loading: checkingOnboarding } = useOnboardingCheck();
+
   const [filtro, setFiltro] = useState("todos");
   const primerRender = useRef(true);
 
@@ -53,8 +51,7 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
   }, [filtro]);
   const [productoParaProbar, setProductoParaProbar] = useState<Producto | null>(null);
   const [productoParaLentes, setProductoParaLentes] = useState<Producto | null>(null);
-  const [productoPendiente, setProductoPendiente] = useState<Producto | null>(null);
-  const [mostrarWelcomeModal, setMostrarWelcomeModal] = useState(false);
+
   const router = useRouter();
 
   const productosFiltrados = listaProductos.filter((p) => {
@@ -70,33 +67,14 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
     )
   );
 
-  const handleSeleccionarMontura = async (producto: Producto) => {
-    const customerData = JSON.parse(localStorage.getItem("optica-mia-customer-data") || "null");
-    const email = customerData?.email || null;
-
-    const firstTime = await check(email);
-
-    if (firstTime) {
-      setProductoPendiente(producto);
-      setMostrarWelcomeModal(true);
-    } else {
-      setProductoParaLentes(producto);
-    }
-  };
-
-  const handleOnboardingComplete = () => {
-    setMostrarWelcomeModal(false);
-    if (productoPendiente) {
-      setProductoParaLentes(productoPendiente);
-      setProductoPendiente(null);
-    }
+  const handleSeleccionarMontura = (producto: Producto) => {
+    setProductoParaLentes(producto);
   };
 
   const handleLensSelect = (tipo: string, color?: string) => {
     if (!productoParaLentes) return;
     const producto = productoParaLentes;
     setProductoParaLentes(null);
-    setProductoPendiente(null);
     const productoParaCarrito = {
       ...producto,
       image: Array.isArray(producto.image) ? producto.image[0] : producto.image,
@@ -140,15 +118,7 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
           onClose={() => setProductoParaLentes(null)}
         />
       )}
-      {mostrarWelcomeModal && (
-        <WelcomeFormModal
-          onClose={() => {
-            setMostrarWelcomeModal(false);
-            setProductoPendiente(null);
-          }}
-          onComplete={handleOnboardingComplete}
-        />
-      )}
+
       <div className="w-full min-h-screen bg-slate-50 py-10 px-4">
         <div className="max-w-6xl mx-auto text-center mb-10">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">{titulo}</h1>

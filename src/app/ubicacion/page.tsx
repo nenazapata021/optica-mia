@@ -38,8 +38,7 @@ export default function UbicacionPage() {
             Cómo llegar
           </h2>
           <p className="text-sm text-gray-600">
-            Te esperamos en nuestra tienda. Usa el botón de abajo para abrir
-            Google Maps y ver nuestra ubicación exacta.
+            Te esperamos en nuestro punto para que te hagas el examen ocular.
           </p>
           <a
             href={GOOGLE_MAPS_URL}
