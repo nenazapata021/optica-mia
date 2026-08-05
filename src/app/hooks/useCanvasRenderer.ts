@@ -2,11 +2,12 @@
 
 import { useCallback, useRef } from "react";
 import { TRY_ON_CONFIG } from "../config/tryOn";
-import type { FaceLandmarks } from "../types/tryOn";
+import type { FaceLandmarks, OverlayConfig } from "../types/tryOn";
 
 interface UseCanvasRendererReturn {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   render: (faceSrc: string, glassesSrc: string, landmarks: FaceLandmarks) => Promise<void>;
+  renderWithOverlay: (faceSrc: string, glassesSrc: string, overlay: OverlayConfig) => Promise<void>;
   renderFallback: (faceSrc: string, glassesSrc: string) => Promise<void>;
   download: () => void;
   clear: () => void;
@@ -67,6 +68,51 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       ctx.globalCompositeOperation = isOverlay ? "source-over" : "multiply";
 
       ctx.drawImage(glassesImg, -glassesWidth / 2, -glassesHeight / 2, glassesWidth, glassesHeight);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.restore();
+    },
+    [],
+  );
+
+  const renderWithOverlay = useCallback(
+    async (faceSrc: string, glassesSrc: string, overlay: OverlayConfig): Promise<void> => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const faceImg = await loadImage(faceSrc);
+      const glassesImg = await loadImage(glassesSrc);
+
+      let w = faceImg.naturalWidth;
+      let h = faceImg.naturalHeight;
+      const maxW = TRY_ON_CONFIG.canvas.maxWidth;
+
+      if (w > maxW) {
+        h = Math.round((h / w) * maxW);
+        w = maxW;
+      }
+
+      canvas.width = w;
+      canvas.height = h;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.drawImage(faceImg, 0, 0, w, h);
+
+      ctx.save();
+      ctx.translate(overlay.centerX, overlay.centerY);
+      ctx.rotate(overlay.rotation);
+
+      const isOverlay = glassesSrc.includes("sin-fondo") || glassesSrc.endsWith(".png");
+      ctx.globalCompositeOperation = isOverlay ? "source-over" : "multiply";
+
+      ctx.drawImage(
+        glassesImg,
+        -overlay.glassesWidth / 2,
+        -overlay.glassesHeight / 2,
+        overlay.glassesWidth,
+        overlay.glassesHeight,
+      );
       ctx.globalCompositeOperation = "source-over";
       ctx.restore();
     },
@@ -134,7 +180,7 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }, []);
 
-  return { canvasRef, render, renderFallback, download, clear };
+  return { canvasRef, render, renderWithOverlay, renderFallback, download, clear };
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {

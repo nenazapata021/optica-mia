@@ -22,7 +22,7 @@ export default function SimulacionVirtual() {
   const [usedFallback, setUsedFallback] = useState(false);
 
   const { detectFromImage, loadModel } = useFaceDetection();
-  const { canvasRef: rendererCanvasRef, render, renderFallback } = useCanvasRenderer();
+  const { canvasRef: rendererCanvasRef, renderWithOverlay, renderFallback } = useCanvasRenderer();
 
   useEffect(() => {
     try {
@@ -61,12 +61,12 @@ export default function SimulacionVirtual() {
         await renderFallback(fotoUrl, overlayUrl);
       } else {
         setUsedFallback(false);
-        await render(fotoUrl, overlayUrl, result.landmarks);
+        await renderWithOverlay(fotoUrl, overlayUrl, result.overlay);
       }
 
       setProcesando(false);
     },
-    [loadModel, detectFromImage, render, renderFallback]
+    [loadModel, detectFromImage, renderWithOverlay, renderFallback]
   );
 
   useEffect(() => {

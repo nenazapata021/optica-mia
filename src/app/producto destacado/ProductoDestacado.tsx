@@ -48,7 +48,7 @@ interface ProductoDestacadoProps {
 
 export default function ProductoDestacado({ productoInicial, imagenUsuario }: ProductoDestacadoProps) {
   const { detectFromImage, isLoading: isModelLoading, loadModel } = useFaceDetection();
-  const { canvasRef, render, renderFallback } = useCanvasRenderer();
+  const { canvasRef, renderWithOverlay, renderFallback } = useCanvasRenderer();
 
   const [productoSeleccionado, setProductoSeleccionado] = useState<Producto>(productoInicial);
   const [processing, setProcessing] = useState(true);
@@ -80,11 +80,11 @@ export default function ProductoDestacado({ productoInicial, imagenUsuario }: Pr
       await renderFallback(photoUrl, overlayUrl);
     } else {
       setUsedFallback(false);
-      await render(photoUrl, overlayUrl, result.landmarks);
+      await renderWithOverlay(photoUrl, overlayUrl, result.overlay);
     }
 
     setProcessing(false);
-  }, [loadModel, detectFromImage, render, renderFallback, overlayUrl]);
+  }, [loadModel, detectFromImage, renderWithOverlay, renderFallback, overlayUrl]);
 
   useEffect(() => {
     if (userPhotoUrl) initTryOn(userPhotoUrl);
@@ -99,14 +99,14 @@ export default function ProductoDestacado({ productoInicial, imagenUsuario }: Pr
       const detectFn = async () => {
         const r = await detectFromImage(userPhotoUrl);
         if (!("error" in r)) {
-          await render(userPhotoUrl, nextOverlay, r.landmarks);
+          await renderWithOverlay(userPhotoUrl, nextOverlay, r.overlay);
         } else {
           await renderFallback(userPhotoUrl, nextOverlay);
         }
       };
       detectFn();
     }
-  }, [productoSeleccionado, userPhotoUrl, detectFromImage, render, renderFallback, usedFallback]);
+  }, [productoSeleccionado, userPhotoUrl, detectFromImage, renderWithOverlay, renderFallback, usedFallback]);
 
   return (
     <div className="w-full bg-slate-50 py-16">

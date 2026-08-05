@@ -9,6 +9,24 @@ export const TRY_ON_CONFIG = {
     outputFaceBlendshapes: false,
     maxFaces: 1,
   },
+  faceMeshEngine: {
+    leftEyeIndices: [33, 133, 159, 145, 153, 154, 155, 157, 158, 160, 161, 173] as readonly number[],
+    rightEyeIndices: [362, 263, 386, 374, 380, 381, 382, 384, 385, 387, 388, 390] as readonly number[],
+    noseBridgeIndices: [6, 197, 195, 5] as readonly number[],
+    faceOvalIndices: [
+      10, 338, 297, 332, 284, 251, 389, 356, 454, 323,
+      361, 288, 397, 365, 379, 378, 400, 377, 152, 148,
+      176, 149, 150, 136, 172, 58, 132, 93, 234, 127,
+      162, 21, 54, 103, 67, 109,
+    ] as readonly number[],
+    glassesWidthMultiplier: 1.8,
+    verticalOffsetRatio: -0.15,
+  },
+  video: {
+    maxFaces: 1,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+  },
   canvas: {
     maxWidth: 800,
   },
@@ -23,7 +41,7 @@ export const TRY_ON_CONFIG = {
   },
   overlay: {
     glassesWidthMultiplier: 1.8,
-    verticalOffsetRatio: -0.08,
+    verticalOffsetRatio: -0.15,
     storageKey: "optica-mia-try-on",
   },
   messages: {

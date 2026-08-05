@@ -1,18 +1,29 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { loadFaceLandmarker, detectFaceFromImageSource, isFaceLandmarkerLoaded } from "../services/faceDetection";
+import {
+  loadFaceLandmarker,
+  detectFaceFromImageSource,
+  detectFaceFromVideoSource,
+  isFaceLandmarkerLoaded,
+} from "../services/faceDetection";
 import { TRY_ON_CONFIG } from "../config/tryOn";
-import type { FaceLandmarks, OverlayConfig } from "../types/tryOn";
+import type { FaceLandmarks, OverlayConfig, RunningMode } from "../types/tryOn";
 
 interface UseFaceDetectionReturn {
   detectFromImage: (src: string) => Promise<
     { landmarks: FaceLandmarks; overlay: OverlayConfig } | { error: string }
   >;
+  detectFromVideo: (
+    video: HTMLVideoElement,
+    timestamp: number,
+  ) => Promise<
+    { landmarks: FaceLandmarks; overlay: OverlayConfig } | { error: string }
+  >;
   isModelLoaded: boolean;
   isLoading: boolean;
   loadError: string | null;
-  loadModel: () => Promise<string | null>;
+  loadModel: (mode?: RunningMode) => Promise<string | null>;
 }
 
 export function useFaceDetection(): UseFaceDetectionReturn {
@@ -21,7 +32,7 @@ export function useFaceDetection(): UseFaceDetectionReturn {
   const [loadError, setLoadError] = useState<string | null>(null);
   const loadPromiseRef = useRef<Promise<string | null> | null>(null);
 
-  const loadModel = useCallback(async (): Promise<string | null> => {
+  const loadModel = useCallback(async (mode: RunningMode = "IMAGE"): Promise<string | null> => {
     if (isFaceLandmarkerLoaded()) {
       setIsModelLoaded(true);
       return null;
@@ -34,7 +45,7 @@ export function useFaceDetection(): UseFaceDetectionReturn {
 
     loadPromiseRef.current = (async () => {
       try {
-        await loadFaceLandmarker();
+        await loadFaceLandmarker(mode);
         setIsModelLoaded(true);
         setIsLoading(false);
         return null;
@@ -84,5 +95,25 @@ export function useFaceDetection(): UseFaceDetectionReturn {
     [],
   );
 
-  return { detectFromImage, isModelLoaded, isLoading, loadError, loadModel };
+  const detectFromVideo = useCallback(
+    async (
+      video: HTMLVideoElement,
+      timestamp: number,
+    ): Promise<
+      { landmarks: FaceLandmarks; overlay: OverlayConfig } | { error: string }
+    > => {
+      if (!isFaceLandmarkerLoaded()) {
+        return { error: TRY_ON_CONFIG.messages.modelError };
+      }
+
+      try {
+        return await detectFaceFromVideoSource(video, timestamp);
+      } catch {
+        return { error: TRY_ON_CONFIG.messages.detectionError };
+      }
+    },
+    [],
+  );
+
+  return { detectFromImage, detectFromVideo, isModelLoaded, isLoading, loadError, loadModel };
 }

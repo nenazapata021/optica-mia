@@ -119,7 +119,7 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
         />
       )}
 
-      <div className="w-full min-h-screen bg-slate-50 py-10 px-4">
+      <div className="w-full min-h-screen bg-slate-50 py-10 px-2">
         <div className="max-w-6xl mx-auto text-center mb-10">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">{titulo}</h1>
           <p className="text-gray-600 max-w-xl mx-auto">{descripcion}</p>
@@ -137,14 +137,14 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mx-auto grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
           {productosFiltrados.map((producto) => (
             <div key={producto.id} className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-sm flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
               
               {(() => {
                 const imageSrc = getProductImageSrc(producto.image);
                 return (
-              <div className="relative w-full h-48 rounded-xl overflow-hidden mb-4 bg-gray-50">
+              <div className="relative w-full h-56 rounded-xl overflow-hidden mb-4 bg-gray-50">
                     {imageSrc && <Image 
                       src={imageSrc}
                       alt={producto.name}
@@ -167,9 +167,14 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
               })()}
               <div className="flex flex-col [flex-grow]">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-lg font-bold text-gray-800 pr-2">
-                    {producto.name}
-                  </h3>
+                  <div className="flex flex-col pr-2">
+                    <h3 className="text-lg font-bold text-gray-800">
+                      {producto.name}
+                    </h3>
+                    {producto.reference && (
+                      <span className="text-sm text-gray-500">Ref: {producto.reference}</span>
+                    )}
+                  </div>
                   <span className="text-lg font-bold text-[#008294] text-right whitespace-nowrap">
                     ${(producto.price ?? 0).toLocaleString("es-CO")}
                   </span>

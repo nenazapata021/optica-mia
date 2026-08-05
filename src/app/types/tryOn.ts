@@ -1,9 +1,18 @@
+export interface Point {
+  x: number;
+  y: number;
+}
+
 export interface FaceLandmarks {
-  leftEye: { x: number; y: number };
-  rightEye: { x: number; y: number };
-  noseTip: { x: number; y: number };
-  jawLeft: { x: number; y: number };
-  jawRight: { x: number; y: number };
+  leftEye: Point;
+  rightEye: Point;
+  noseBridge: Point;
+  noseTip: Point;
+  jawLeft: Point;
+  jawRight: Point;
+  leftEyeContour: Point[];
+  rightEyeContour: Point[];
+  faceOval: Point[];
   imageWidth: number;
   imageHeight: number;
 }
@@ -14,6 +23,11 @@ export interface OverlayConfig {
   scale: number;
   rotation: number;
   eyeDistance: number;
+  glassesWidth: number;
+  glassesHeight: number;
+  verticalOffset: number;
 }
+
+export type RunningMode = "IMAGE" | "VIDEO";
 
 export type ModalStep = "options" | "camera" | "detecting" | "result";
