@@ -214,8 +214,7 @@ function ModalErrorCamara({ error, onReintentar, onSubirFoto, onCerrar }: ModalE
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
-    >
-      <div
+    >n      <div
         className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl p-8 flex flex-col items-center text-center"
         style={{ animation: "fadeInUp 0.35s ease", borderTop: `5px solid ${colorBorde}` }}
       >
@@ -305,66 +304,21 @@ export default function Probador() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [errorCamara, setErrorCamara] = useState<CameraError | null>(null); // null | { titulo, detalle, tipo }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [camaraActiva, setCamaraActiva] = useState(false);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
-  const iniciarCamara = useCallback(async () => {
-    setFase("camara");
-    setErrorCamara(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setCamaraActiva(true);
-    } catch (err) {
-      setCamaraActiva(false);
-      // Detectar tipo de error específico
-      const name = (err instanceof Error ? err.name : "") || "";
-      let errorType: CameraErrorType = "desconocido";
-
-      if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-        errorType = "permisos";
-      } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
-        errorType = "no-encontrada";
-      } else if (name === "NotReadableError" || name === "TrackStartError") {
-        errorType = "en-uso";
-      } else if (name === "OverconstrainedError") {
-        errorType = "configuracion";
-      }
-
-      setErrorCamara({ tipo: errorType, ...cameraErrorDefinitions[errorType] });
-    }
-  }, []);
-
-  /* Detiene cámara al desmontar o cambiar fase */
-  useEffect(() => {
-    return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    };
-  }, []);
 
   /* Maneja foto subida */
   const handleSubirFoto = (file: File) => {
     const url = URL.createObjectURL(file);
     setFotoUrl(url);
-    // Detener cámara si estaba activa
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    setCamaraActiva(false);
     setFase("foto");
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  /* Función para tomar foto - desactivada para evitar mostrar rostro del cliente */
+  const iniciarCamara = () => {
+    alert("La función de tomar foto está temporalmente desactivada. Por favor, suba una foto en su lugar.");
+  };
+
   const volverAlModal = () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    setCamaraActiva(false);
     if (fotoUrl) URL.revokeObjectURL(fotoUrl);
     setFotoUrl(null);
     setFase("modal");
@@ -401,17 +355,6 @@ export default function Probador() {
           onCerrar={() => router.back()}
         />
       )}
-
-      {/* ── Vista principal del probador ── */}
-      <div className="mx-auto max-w-5xl px-4 py-10">
-        {/* Si hay una foto, mostramos la nueva sección de producto destacado */}
-        {fase === "foto" && fotoUrl && producto && (
-          <ProductoDestacado
-            productoInicial={{ id: producto.id, name: producto.nombre, price: producto.precio, image: producto.imagen, categoria: producto.categoria, color: producto.color, descripcion: "" }}
-            imagenUsuario={fotoUrl}
-          />
-        )}
-      </div>
     </>
   );
 }

@@ -22,6 +22,7 @@ model Product {
 
   orderItems OrderItem[]
   favorites  Favorite[]
+  motor      Motor?
 }
 
 model Customer {
@@ -86,4 +87,32 @@ model Sede {
   horario   String   @default("Lunes a Sábados 8:00 - 18:00")
   telefono  String?
   createdAt DateTime @default(now())
+}
+
+model Motor {
+  id                String   @id @default(cuid())
+  productId         String   @unique
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Catálogo
+  marca             String?
+  forma             String   @default("Redonda")
+  tags              String[]
+  badge             String?
+
+  // Imágenes
+  imagenCatalogoUrl String
+  imagenOverlayUrl  String
+
+  // Calibración Probador Virtual
+  anchoRealMm       Float
+  anchoImagenPx     Int
+  offsetXPx         Float    @default(0)
+  offsetYPx         Float    @default(0)
+  anguloBaseGrados  Float    @default(0)
+
+  // Estado
+  activo            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }

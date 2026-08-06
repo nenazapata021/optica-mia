@@ -1,24 +1,13 @@
 'use client';
 
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination, Autoplay } from 'swiper/modules'; // 💡 Quitamos EffectFade
+import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import Image from 'next/image';
 
-// Importa los estilos de Swiper
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
-// 💡 Quitamos el estilo de effect-fade que ya no usaremos
 
-// Importa las imágenes que se usarán en el carrusel
-import foto1 from '../assets/foto1-sin-fondo.png';
-import foto2 from '../assets/foto2-sin-fondo.png';
-import foto3 from '../assets/foto3-sin-fondo.png';
-import foto4 from '../assets/foto4-sin-fondo.png';
-import foto5 from '../assets/foto5-sin-fondo.png';
-import foto6 from '../assets/foto6-sin-fondo.png';
-
-// Un pequeño CSS para asegurar que la paginación y navegación se vean bien con Tailwind
 const customStyles = `
 .swiper-pagination-bullet-active {
   background-color: #008294 !important;
@@ -41,23 +30,23 @@ const customStyles = `
 `;
 
 const images = [
-  { src: foto1, alt: 'Gafas modelo 1' },
-  { src: foto2, alt: 'Gafas modelo 2' },
-  { src: foto3, alt: 'Gafas modelo 3' },
-  { src: foto4, alt: 'Gafas modelo 4' },
-  { src: foto5, alt: 'Gafas modelo 5' },
-  { src: foto6, alt: 'Gafas modelo 6' },
+  { src: '/monturas/foto1.png', alt: 'Montura Agatada 8306' },
+  { src: '/monturas/foto2.png', alt: 'Montura Agatada 24028' },
+  { src: '/monturas/foto3.png', alt: 'Montura Vintage 6019' },
+  { src: '/monturas/foto4.png', alt: 'Montura Ovalada Volt' },
+  { src: '/monturas/foto5.png', alt: 'Montura Agatada Retro' },
+  { src: '/monturas/foto6.png', alt: 'Montura Agatada Retro' },
 ];
 
 export default function Carousel() {
   return (
     <>
       <style>{customStyles}</style>
-      <div className="w-full max-w-6xl mx-auto px-4 py-8"> {/* Contenedor para centrar y dar margen */}
+      <div className="w-full max-w-6xl mx-auto px-4 py-8">
         <Swiper
-          modules={[Navigation, Pagination, Autoplay]} // 💡 Sin EffectFade
-          spaceBetween={24} // Espacio exacto entre las tarjetas de gafas
-          slidesPerView={1} // 1 foto por defecto en celulares
+          modules={[Navigation, Pagination, Autoplay]}
+          spaceBetween={24}
+          slidesPerView={1}
           loop={true}
           autoplay={{
             delay: 3000,
@@ -69,20 +58,31 @@ export default function Carousel() {
           }}
           navigation={true}
           breakpoints={{
-            // 💡 Cuando la pantalla sea grande (computadoras), muestra 3 imágenes a la vez
+            640: {
+              slidesPerView: 2,
+            },
             768: {
               slidesPerView: 3,
+            },
+            1024: {
+              slidesPerView: 4,
             },
           }}
           className="mySwiper w-full"
         >
           {images.map((image, index) => (
-          <SwiperSlide key={index} className="group rounded-lg overflow-hidden shadow-lg">
-            <div className="relative h-64 w-full">
-              <Image fill src={image.src} alt={image.alt} className="object-cover transition-transform duration-300 group-hover:scale-105" />
-            </div>
-          </SwiperSlide>
-        ))}
+            <SwiperSlide key={index} className="group rounded-lg overflow-hidden shadow-lg">
+              <div className="relative h-64 w-full bg-gray-50 flex items-center justify-center">
+                <Image
+                  fill
+                  src={image.src}
+                  alt={image.alt}
+                  className="object-contain p-4 transition-transform duration-300 group-hover:scale-105"
+                  sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                />
+              </div>
+            </SwiperSlide>
+          ))}
         </Swiper>
       </div>
     </>

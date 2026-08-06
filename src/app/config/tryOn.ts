@@ -26,6 +26,11 @@ export const TRY_ON_CONFIG = {
     maxFaces: 1,
     minDetectionConfidence: 0.5,
     minTrackingConfidence: 0.5,
+    runningMode: "VIDEO" as const,
+    smoothing: {
+      factor: 0.35,
+      minConfidence: 0.5,
+    },
   },
   canvas: {
     maxWidth: 800,

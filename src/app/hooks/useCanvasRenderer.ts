@@ -9,6 +9,8 @@ interface UseCanvasRendererReturn {
   render: (faceSrc: string, glassesSrc: string, landmarks: FaceLandmarks) => Promise<void>;
   renderWithOverlay: (faceSrc: string, glassesSrc: string, overlay: OverlayConfig) => Promise<void>;
   renderFallback: (faceSrc: string, glassesSrc: string) => Promise<void>;
+  drawVideoFrame: (video: HTMLVideoElement, glassesImg: HTMLImageElement, overlay: OverlayConfig) => void;
+  drawImageFrame: (image: HTMLImageElement, glassesImg: HTMLImageElement, overlay: OverlayConfig) => void;
   download: () => void;
   clear: () => void;
 }
@@ -163,6 +165,72 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
     [],
   );
 
+  const drawVideoFrame = useCallback(
+    (video: HTMLVideoElement, glassesImg: HTMLImageElement, overlay: OverlayConfig): void => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.drawImage(video, 0, 0);
+
+      ctx.save();
+      ctx.translate(overlay.centerX, overlay.centerY);
+      ctx.rotate(overlay.rotation);
+
+      const isOverlay = glassesImg.src.includes("sin-fondo") || glassesImg.src.endsWith(".png");
+      ctx.globalCompositeOperation = isOverlay ? "source-over" : "multiply";
+
+      ctx.drawImage(
+        glassesImg,
+        -overlay.glassesWidth / 2,
+        -overlay.glassesHeight / 2,
+        overlay.glassesWidth,
+        overlay.glassesHeight,
+      );
+      ctx.globalCompositeOperation = "source-over";
+      ctx.restore();
+    },
+    [],
+  );
+
+  const drawImageFrame = useCallback(
+    (image: HTMLImageElement, glassesImg: HTMLImageElement, overlay: OverlayConfig): void => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.drawImage(image, 0, 0);
+
+      ctx.save();
+      ctx.translate(overlay.centerX, overlay.centerY);
+      ctx.rotate(overlay.rotation);
+
+      const isOverlay = glassesImg.src.includes("sin-fondo") || glassesImg.src.endsWith(".png");
+      ctx.globalCompositeOperation = isOverlay ? "source-over" : "multiply";
+
+      ctx.drawImage(
+        glassesImg,
+        -overlay.glassesWidth / 2,
+        -overlay.glassesHeight / 2,
+        overlay.glassesWidth,
+        overlay.glassesHeight,
+      );
+      ctx.globalCompositeOperation = "source-over";
+      ctx.restore();
+    },
+    [],
+  );
+
   const download = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -180,7 +248,7 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }, []);
 
-  return { canvasRef, render, renderWithOverlay, renderFallback, download, clear };
+  return { canvasRef, render, renderWithOverlay, renderFallback, drawVideoFrame, drawImageFrame, download, clear };
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {

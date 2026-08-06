@@ -47,6 +47,61 @@ async function main() {
   }
 
   console.log(`Seed completado: ${products.length} productos insertados`);
+
+  const motors = [
+    {
+      productId: "foto1",
+      marca: "Optica Mia",
+      forma: "Redonda",
+      tags: ["clásica", "elegante", "mujer"],
+      badge: "Más vendido",
+      imagenCatalogoUrl: "/assets/foto1.jpg",
+      imagenOverlayUrl: "/assets/foto1-sin-fondo.png",
+      anchoRealMm: 138,
+      anchoImagenPx: 800,
+      offsetXPx: 0,
+      offsetYPx: -5,
+      anguloBaseGrados: 0,
+    },
+    {
+      productId: "foto3",
+      marca: "Optica Mia",
+      forma: "Rectangular",
+      tags: ["ejecutiva", "hombre", "moderna"],
+      badge: "Nuevo",
+      imagenCatalogoUrl: "/assets/foto3.jpg",
+      imagenOverlayUrl: "/assets/foto3-sin-fondo.png",
+      anchoRealMm: 142,
+      anchoImagenPx: 850,
+      offsetXPx: 2,
+      offsetYPx: 0,
+      anguloBaseGrados: 0,
+    },
+    {
+      productId: "gafas-de-sol1",
+      marca: "Optica Mia",
+      forma: "Aviador",
+      tags: ["sol", "aviador", "clásica"],
+      badge: "Popular",
+      imagenCatalogoUrl: "/assets/gafas de sol1.jpg",
+      imagenOverlayUrl: "/assets/foto6-sin-fondo.png",
+      anchoRealMm: 140,
+      anchoImagenPx: 820,
+      offsetXPx: 0,
+      offsetYPx: -3,
+      anguloBaseGrados: 0,
+    },
+  ];
+
+  for (const motor of motors) {
+    await prisma.motor.upsert({
+      where: { productId: motor.productId },
+      update: motor,
+      create: motor,
+    });
+  }
+
+  console.log(`Seed completado: ${motors.length} motores insertados`);
 }
 
 main()
