@@ -11,4 +11,6 @@ export interface Producto {
   modelo?: string;
   color?: string;
   imagenMontura?: StaticImageData | string;
+  /** Ajuste fino de tamaño de la montura en el probador (multiplicador sobre FRAME_SCALE_FACTOR). */
+  scaleMultiplier?: number;
 }

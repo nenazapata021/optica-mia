@@ -5,28 +5,28 @@ import Image from "next/image";
 import { type Producto } from "../types/producto";
 import ModalProbador from "../modal probador/modalProbador";
 
-// Importación de imágenes locales
-import foto1 from '../assets/foto1-sin-fondo.png';
-import foto2 from '../assets/foto2-sin-fondo.png';
-import foto3 from '../assets/foto3-sin-fondo.png';
-import foto4 from '../assets/foto4-sin-fondo.png';
-import foto5 from '../assets/foto5-sin-fondo.png';
-import foto6 from '../assets/foto6-sin-fondo.png';
-import foto7 from '../assets/foto7-sin-fondo.png';
-import foto8 from '../assets/foto8-sin-fondo.png';
-import foto9 from '../assets/foto9-sin-fondo.png';
-import foto10 from '../assets/foto10-sin-fondo.png';
-import foto11 from '../assets/foto11-sin-fondo.png';
-import foto12 from '../assets/foto12-sin-fondo.png';
-import foto13 from '../assets/foto13-sin-fondo.png';
-import foto14 from '../assets/foto14-sin-fondo.png';
-import foto15 from '../assets/foto15-sin-fondo.png';
-import foto16 from '../assets/foto16-sin-fondo.png';
-import foto17 from '../assets/foto17-sin-fondo.png';
-import foto18 from '../assets/foto18-sin-fondo.png';
-import foto19 from '../assets/foto19-sin-fondo.png';
-import foto20 from '../assets/foto20-sin-fondo.png';
-import foto21 from '../assets/foto21-sin-fondo.png';
+// Las monturas (medidas) usan las PNG transparentes de /public/monturas.
+const foto1 = '/monturas/foto1.png';
+const foto2 = '/monturas/foto2.png';
+const foto3 = '/monturas/foto3.png';
+const foto4 = '/monturas/foto4.png';
+const foto5 = '/monturas/foto5.png';
+const foto6 = '/monturas/foto6.png';
+const foto7 = '/monturas/foto7.png';
+const foto8 = '/monturas/foto8.png';
+const foto9 = '/monturas/foto9.png';
+const foto10 = '/monturas/foto10.png';
+const foto11 = '/monturas/foto11.png';
+const foto12 = '/monturas/foto12.png';
+const foto13 = '/monturas/foto13.png';
+const foto14 = '/monturas/foto14.png';
+const foto15 = '/monturas/foto15.png';
+const foto16 = '/monturas/foto16.png';
+const foto17 = '/monturas/foto17.png';
+const foto18 = '/monturas/foto18.png';
+const foto19 = '/monturas/foto19.png';
+const foto20 = '/monturas/foto20.png';
+const foto21 = '/monturas/foto21.png';
 
 const todosProd: Producto[] = [
   { id: 'p1',  name: 'Montura Clásica',         price: 120000, image: foto1,  categoria: 'mujer',  color: 'Transparente', descripcion: '' },

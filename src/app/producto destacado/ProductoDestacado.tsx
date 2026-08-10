@@ -14,7 +14,7 @@ interface ProductoJs {
   id: string;
   nombre: string;
   precio: number;
-  imagen: StaticImageData;
+  imagen: string | StaticImageData;
   color: string;
 }
 

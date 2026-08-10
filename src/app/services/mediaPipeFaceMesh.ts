@@ -13,6 +13,12 @@ import type {
 
 type NormalizedLandmark = { x: number; y: number; z: number };
 
+// Calibración global: ancho de la montura = FRAME_SCALE_FACTOR x distancia interpupilar.
+// Ajusta por prueba y error según el modelo de montura.
+const FRAME_SCALE_FACTOR = 2.1;
+// Anclaje vertical: 0 = centro exacto de los ojos, 1 = puente de la nariz (landmark 168).
+const NOSE_ANCHOR_WEIGHT = 0.5;
+
 export class MediaPipeFaceMeshEngine {
   private static instance: MediaPipeFaceMeshEngine | null = null;
 
@@ -101,8 +107,15 @@ export class MediaPipeFaceMeshEngine {
     const rightEyeContour = this.extractContour(lm, cfg.rightEyeIndices);
     const faceOval = this.extractContour(lm, cfg.faceOvalIndices);
 
-    const leftEye = this.computeCentroid(leftEyeContour);
-    const rightEye = this.computeCentroid(rightEyeContour);
+    // Iris tracking: usa el centro del iris (landmarks 468-477) cuando el modelo
+    // los incluye, para superponer la montura exactamente sobre el ojo.
+    const hasIris = lm.length >= cfg.minIrisLandmarks;
+    const leftEye = hasIris
+      ? this.computeCentroid(this.extractContour(lm, cfg.leftIrisIndices))
+      : this.computeCentroid(leftEyeContour);
+    const rightEye = hasIris
+      ? this.computeCentroid(this.extractContour(lm, cfg.rightIrisIndices))
+      : this.computeCentroid(rightEyeContour);
     const noseBridge = this.computeAveragePoint(lm, cfg.noseBridgeIndices);
     const noseTip = { x: lm[1].x, y: lm[1].y };
     const jawLeft = { x: lm[172].x, y: lm[172].y };
@@ -129,9 +142,8 @@ export class MediaPipeFaceMeshEngine {
     imageNaturalHeight: number,
     glassesNaturalWidth: number,
     glassesNaturalHeight: number,
+    scaleMultiplier = 1,
   ): OverlayConfig {
-    const cfg = TRY_ON_CONFIG.faceMeshEngine;
-
     const leftPx = {
       x: landmarks.leftEye.x * imageNaturalWidth,
       y: landmarks.leftEye.y * imageNaturalHeight,
@@ -146,15 +158,24 @@ export class MediaPipeFaceMeshEngine {
     const eyeDistance = Math.sqrt(eyeDX * eyeDX + eyeDY * eyeDY);
 
     const centerX = (leftPx.x + rightPx.x) / 2;
-    const centerY = (leftPx.y + rightPx.y) / 2;
 
-    const verticalOffset = eyeDistance * cfg.verticalOffsetRatio;
+    // Anclaje vertical al puente de la nariz (no al centro exacto de los ojos),
+    // para que las patillas caigan naturalmente sobre las orejas.
+    const noseBridgePx = {
+      x: landmarks.noseBridge.x * imageNaturalWidth,
+      y: landmarks.noseBridge.y * imageNaturalHeight,
+    };
+    const eyeMidY = (leftPx.y + rightPx.y) / 2;
+    const centerY =
+      eyeMidY * (1 - NOSE_ANCHOR_WEIGHT) + noseBridgePx.y * NOSE_ANCHOR_WEIGHT;
+
+    const verticalOffset = 0;
 
     const faceWidth =
       Math.abs(landmarks.jawRight.x - landmarks.jawLeft.x) *
       imageNaturalWidth;
 
-    const glassesWidth = eyeDistance * cfg.glassesWidthMultiplier;
+    const glassesWidth = eyeDistance * FRAME_SCALE_FACTOR * scaleMultiplier;
     const aspect = glassesNaturalHeight / glassesNaturalWidth;
     const glassesHeight = glassesWidth * aspect;
 
@@ -164,7 +185,7 @@ export class MediaPipeFaceMeshEngine {
 
     return {
       centerX,
-      centerY: centerY + verticalOffset,
+      centerY,
       scale,
       rotation,
       eyeDistance,

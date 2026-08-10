@@ -100,11 +100,11 @@ export default function SimulacionVirtual() {
           {/* Probador virtual - Columna principal */}
           <div className="lg:col-span-3">
             <div className="sticky top-20">
-              <VirtualTryOn glassesUrl={overlayUrl} />
+              <VirtualTryOn glassesImageUrl={overlayUrl} faceSrc={datos.fotoUrl} scaleMultiplier={datos.producto.scaleMultiplier} />
 
               <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-400">
                 <div className="h-1.5 w-1.5 rounded-full bg-green-400" />
-                Posici&oacute;nate frente a la c&aacute;mara para ver la montura en tu rostro
+                El motor detecta tu rostro y superpone la montura sobre tus ojos
               </div>
             </div>
           </div>

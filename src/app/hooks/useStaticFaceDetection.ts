@@ -6,7 +6,10 @@ import { TRY_ON_CONFIG } from "../config/tryOn";
 import type { OverlayConfig } from "../types/tryOn";
 
 interface UseStaticFaceDetectionReturn {
-  detectFromImage: (image: HTMLImageElement) => Promise<OverlayConfig | null>;
+  detectFromImage: (
+    image: HTMLImageElement,
+    scaleMultiplier?: number,
+  ) => Promise<OverlayConfig | null>;
   isLoading: boolean;
   error: string | null;
 }
@@ -44,7 +47,7 @@ export function useStaticFaceDetection(): UseStaticFaceDetectionReturn {
   }, []);
 
   const detectFromImage = useCallback(
-    async (image: HTMLImageElement): Promise<OverlayConfig | null> => {
+    async (image: HTMLImageElement, scaleMultiplier = 1): Promise<OverlayConfig | null> => {
       const ready = await ensureModel();
       if (!ready) return null;
 
@@ -64,14 +67,7 @@ export function useStaticFaceDetection(): UseStaticFaceDetectionReturn {
       landmarks.imageWidth = nw;
       landmarks.imageHeight = nh;
 
-      const eyeDX = landmarks.rightEye.x - landmarks.leftEye.x;
-      const eyeDY = landmarks.rightEye.y - landmarks.leftEye.y;
-      const eyeDistance = Math.sqrt(eyeDX * eyeDX + eyeDY * eyeDY) * nw;
-      const glassesWidth = eyeDistance * TRY_ON_CONFIG.faceMeshEngine.glassesWidthMultiplier;
-
-      const overlay = engine.calculateGlassesOverlay(
-        landmarks, nw, nh, glassesWidth, glassesWidth * 0.35,
-      );
+      const overlay = engine.calculateGlassesOverlay(landmarks, nw, nh, 1, 1, scaleMultiplier);
 
       setError(null);
       return overlay;

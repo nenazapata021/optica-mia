@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState, type ChangeEvent } from "react";
-import { Camera, LoaderCircle, Upload, VideoOff, RefreshCw } from "lucide-react";
-import { useFaceLandmarks } from "../hooks/useFaceLandmarks";
-import { useStaticFaceDetection } from "../hooks/useStaticFaceDetection";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { LoaderCircle, Upload, Download, ImageOff, Video, Camera } from "lucide-react";
 import { useCanvasRenderer } from "../hooks/useCanvasRenderer";
+import { MediaPipeFaceMeshEngine } from "../services/mediaPipeFaceMesh";
+import { TRY_ON_CONFIG } from "../config/tryOn";
+import type { FaceLandmarks, OverlayConfig, RunningMode } from "../types/tryOn";
+import type { Producto } from "../types/producto";
 
 interface VirtualTryOnProps {
-  glassesUrl: string;
-  onCapture?: (dataUrl: string) => void;
+  glassesImageUrl: string;
+  faceSrc?: string;
+  scaleMultiplier?: number;
+  producto?: Producto;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -21,172 +25,190 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-export default function VirtualTryOn({ glassesUrl, onCapture }: VirtualTryOnProps) {
-  const {
-    videoRef,
-    overlayConfig: cameraOverlay,
-    isDetecting,
-    isLoading: cameraLoading,
-    error: cameraError,
-    start: startCamera,
-    stop: stopCamera,
-  } = useFaceLandmarks();
+export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier, producto }: VirtualTryOnProps) {
+  const { canvasRef, drawImageFrame, download, clear } = useCanvasRenderer();
 
-  const {
-    detectFromImage,
-    isLoading: staticLoading,
-    error: staticError,
-  } = useStaticFaceDetection();
-
-  const { canvasRef, drawVideoFrame, drawImageFrame, clear } = useCanvasRenderer();
-  const glassesImgRef = useRef<HTMLImageElement | null>(null);
-  const animFrameRef = useRef<number>(0);
-
-  const [mode, setMode] = useState<"camera" | "upload">("camera");
   const [uploadedImage, setUploadedImage] = useState<HTMLImageElement | null>(null);
-  const [staticOverlay, setStaticOverlay] = useState<ReturnType<typeof useStaticFaceDetection> extends { detectFromImage: (...args: any[]) => Promise<infer R> } ? R : never>(null);
-  const [isRendering, setIsRendering] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [overlay, setOverlay] = useState<OverlayConfig | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [faceDetected, setFaceDetected] = useState<FaceLandmarks | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [hasFace, setHasFace] = useState(false);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const animFrameRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const faceLandmarksRef = useRef<FaceLandmarks | null>(null);
+  const overlayConfigRef = useRef<OverlayConfig | null>(null);
+  const loadedImageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    loadImage(glassesUrl).then((img) => {
-      if (!cancelled) glassesImgRef.current = img;
+    loadImage(glassesImageUrl).then((img) => {
+      if (!cancelled) loadedImageRef.current = img;
     });
     return () => { cancelled = true; };
-  }, [glassesUrl]);
+  }, [glassesImageUrl]);
 
-  // Try camera on mount
   useEffect(() => {
-    startCamera();
-    return () => stopCamera();
-  }, [startCamera, stopCamera]);
-
-  // If camera fails, switch to upload mode
-  useEffect(() => {
-    if (cameraError) setMode("upload");
-  }, [cameraError]);
-
-  // Camera render loop
-  const renderLoop = useCallback(() => {
-    if (mode !== "camera") return;
-
-    const video = videoRef.current;
-    const glasses = glassesImgRef.current;
-    const overlay = cameraOverlay;
-
-    if (video && glasses && overlay && video.readyState >= 2) {
-      drawVideoFrame(video, glasses, overlay);
-      setIsRendering(true);
-    } else if (video && video.readyState >= 2) {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext("2d");
-        if (ctx) ctx.drawImage(video, 0, 0);
+    if (!faceSrc || faceSrc === "") return;
+    let cancelled = false;
+    loadImage(faceSrc).then((img) => {
+      if (!cancelled) {
+        setUploadedImage(img);
+        const engine = MediaPipeFaceMeshEngine.getInstance();
+        const result = engine.detectImage(img);
+        if (result) {
+          const landmarks = engine.extractPreciseLandmarks(result);
+          if (landmarks) {
+            faceLandmarksRef.current = landmarks;
+            overlayConfigRef.current = engine.calculateGlassesOverlay(
+              landmarks,
+              landmarks.imageWidth,
+              landmarks.imageHeight,
+              1,
+              1,
+            );
+            setOverlay(overlayConfigRef.current);
+            setHasFace(true);
+          }
+        }
       }
-      setIsRendering(false);
-    }
-
-    animFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [mode, cameraOverlay, drawVideoFrame, videoRef, canvasRef]);
+    });
+    return () => { cancelled = true; };
+  }, [faceSrc]);
 
   useEffect(() => {
-    if (mode === "camera") {
-      animFrameRef.current = requestAnimationFrame(renderLoop);
-    }
-    return () => cancelAnimationFrame(animFrameRef.current);
-  }, [mode, renderLoop]);
+    if (!isCameraActive || !videoRef.current) return;
+    if (videoRef.current.readyState < 2) return;
 
-  // Upload mode: draw static image + overlay
-  useEffect(() => {
-    if (mode === "upload" && uploadedImage && staticOverlay && glassesImgRef.current) {
-      drawImageFrame(uploadedImage, glassesImgRef.current, staticOverlay);
-      setIsRendering(true);
-    }
-  }, [mode, uploadedImage, staticOverlay, drawImageFrame]);
-
-  const handleFileChange = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-
-    const img = new Image();
-    img.onload = async () => {
-      setUploadedImage(img);
-      setIsRendering(false);
-      const overlay = await detectFromImage(img);
-      if (overlay) {
-        setStaticOverlay(overlay);
-      } else {
-        setStaticOverlay(null);
+    let animFrameId: number;
+    const detectVideoFrame = () => {
+      const engine = MediaPipeFaceMeshEngine.getInstance();
+      const result = engine.detectVideo(videoRef.current, performance.now());
+      if (result) {
+        const landmarks = engine.extractPreciseLandmarks(result);
+        if (landmarks) {
+          faceLandmarksRef.current = landmarks;
+          const overlay = engine.calculateGlassesOverlay(
+            landmarks,
+            landmarks.imageWidth,
+            landmarks.imageHeight,
+            1,
+            1,
+          );
+          overlayConfigRef.current = overlay;
+          setFaceDetected(landmarks);
+          setOverlay(overlay);
+        }
       }
+      animFrameId = requestAnimationFrame(detectVideoFrame);
     };
-    img.src = URL.createObjectURL(file);
-  }, [detectFromImage]);
+    animFrameId = requestAnimationFrame(detectVideoFrame);
 
-  const handleRetryCamera = useCallback(() => {
-    setMode("camera");
-    setUploadedImage(null);
-    setStaticOverlay(null);
-    startCamera();
-  }, [startCamera]);
+    return () => {
+      cancelAnimationFrame(animFrameId);
+    };
+  }, [isCameraActive]);
 
-  const handleCapture = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !onCapture) return;
-    onCapture(canvas.toDataURL("image/jpeg", 0.92));
-  }, [canvasRef, onCapture]);
+  const startCamera = async () => {
+    try {
+      const video = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      if (videoRef.current) {
+        videoRef.current.srcObject = video;
+      }
+      setStream(video);
+      setIsCameraActive(true);
+      setIsDetecting(true);
+    } catch (err) {
+      setError("No se pudo acceder a la cámara. Verifica permisos.");
+    }
+  };
 
-  const handleStop = useCallback(() => {
-    stopCamera();
-    clear();
-  }, [stopCamera, clear]);
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+    }
+    setStream(null);
+    setIsCameraActive(false);
+    setIsDetecting(false);
+    cancelAnimationFrame(animFrameRef.current);
+  };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border-4 border-[#005f6b] bg-slate-900 shadow-lg">
-      {mode === "camera" && (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="absolute inset-0 h-full w-full object-cover opacity-0"
-        />
-      )}
-      <canvas ref={canvasRef} className="block h-auto w-full" />
+    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl border-4 border-[#005f6b] bg-slate-900 shadow-lg">
+      <canvas ref={canvasRef} className="block h-full w-full object-contain" />
 
-      {cameraLoading && mode === "camera" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80">
-          <div className="flex items-center gap-2 rounded-full bg-white px-5 py-3 shadow-lg">
-            <LoaderCircle size={18} className="animate-spin text-[#008294]" />
-            <span className="text-sm font-medium text-slate-700">Cargando c&aacute;mara...</span>
-          </div>
-        </div>
-      )}
-
-      {mode === "upload" && !uploadedImage && (
+      {!uploadedImage && !isCameraActive && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-900/80">
-          <VideoOff size={40} className="text-slate-400" />
+          <ImageOff size={40} className="text-slate-400" />
           <p className="max-w-xs text-center text-sm text-slate-300">
-            No hay c&aacute;mara disponible. Sube una foto frontal para probar la montura.
+            Sube una foto frontal para probar la montura.
           </p>
           <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]">
             <Upload size={18} />
             Subir foto
             <input
-              ref={fileInputRef}
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={handleFileChange}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const img = new Image();
+                img.onload = () => {
+                  setUploadedImage(img);
+                  const engine = MediaPipeFaceMeshEngine.getInstance();
+                  const result = engine.detectImage(img);
+                  if (result) {
+                    const landmarks = engine.extractPreciseLandmarks(result);
+                    if (landmarks) {
+                      overlayConfigRef.current = engine.calculateGlassesOverlay(
+                        landmarks,
+                        landmarks.imageWidth,
+                        landmarks.imageHeight,
+                        1,
+                        1,
+                      );
+                      setOverlay(overlayConfigRef.current);
+                      setHasFace(true);
+                    }
+                  }
+                };
+                img.src = URL.createObjectURL(file);
+              }}
             />
           </label>
         </div>
       )}
 
-      {mode === "upload" && uploadedImage && staticLoading && (
+      {isCameraActive && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-900/80">
+          <Video
+            ref={videoRef}
+            playsWhenPlaybackActive
+            className="max-w-md rounded-xl border border-[#005f6b] object-contain"
+          />
+          <button
+            onClick={startCamera}
+            className="flex items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]">
+            <Camera size={18} />
+            {isCameraActive ? "Detener cámara" : "Iniciar cámara"}
+          </button>
+        </div>
+      )}
+
+      {uploadedImage && overlay && (
+        <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-black/40 px-4 py-1 text-xs font-medium text-white backdrop-blur-sm">
+          Resultado
+        </div>
+      )}
+
+      {isProcessing && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80">
           <div className="flex items-center gap-2 rounded-full bg-white px-5 py-3 shadow-lg">
             <LoaderCircle size={18} className="animate-spin text-[#008294]" />
@@ -195,76 +217,78 @@ export default function VirtualTryOn({ glassesUrl, onCapture }: VirtualTryOnProp
         </div>
       )}
 
-      {mode === "upload" && uploadedImage && staticError && (
+      {error && !isProcessing && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-900/80">
           <div className="flex flex-col items-center gap-3 rounded-2xl bg-white px-6 py-5 text-center shadow-lg">
-            <VideoOff size={32} className="text-red-500" />
-            <p className="max-w-xs text-sm text-slate-700">{staticError}</p>
-            <p className="text-xs text-slate-400">Usa una foto frontal con buena iluminaci&oacute;n.</p>
-          </div>
-          <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]">
-            <Upload size={18} />
-            Subir otra foto
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-          </label>
-        </div>
-      )}
-
-      {!cameraLoading && !isDetecting && mode === "camera" && !cameraError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/60">
-          <div className="flex items-center gap-2 rounded-full bg-white px-5 py-3 shadow-lg">
-            <LoaderCircle size={16} className="animate-spin text-[#008294]" />
-            <span className="text-sm font-medium text-slate-700">Buscando rostro...</span>
-          </div>
-        </div>
-      )}
-
-      <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-3">
-        {mode === "upload" && uploadedImage && (
-          <>
-            <button
-              onClick={handleCapture}
-              disabled={!isRendering}
-              className="flex items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b] disabled:opacity-50"
-            >
-              <Camera size={18} />
-              Capturar foto
-            </button>
-            <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow transition hover:bg-white">
-              <Upload size={16} />
-              Otra foto
+            <ImageOff size={32} className="text-red-500" />
+            <p className="max-w-xs text-sm text-slate-700">{error}</p>
+            <p className="text-xs text-slate-400">Usa una foto frontal con buena iluminación.</p>
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]">
+              <Upload size={18} />
+              Subir otra foto
               <input
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={handleFileChange}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const img = new Image();
+                  img.onload = () => {
+                    setUploadedImage(img);
+                    const engine = MediaPipeFaceMeshEngine.getInstance();
+                    const result = engine.detectImage(img);
+                    if (result) {
+                      const landmarks = engine.extractPreciseLandmarks(result);
+                      if (landmarks) {
+                        overlayConfigRef.current = engine.calculateGlassesOverlay(
+                          landmarks,
+                          landmarks.imageWidth,
+                          landmarks.imageHeight,
+                          1,
+                          1,
+                        );
+                        setOverlay(overlayConfigRef.current);
+                        setHasFace(true);
+                      }
+                    }
+                  };
+                  img.src = URL.createObjectURL(file);
+                }}
               />
             </label>
-          </>
-        )}
-        {mode === "upload" && !uploadedImage && cameraError && (
-          <button
-            onClick={handleRetryCamera}
-            className="flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow transition hover:bg-white"
-          >
-            <RefreshCw size={16} />
-            Intentar con c&aacute;mara
-          </button>
-        )}
-        {mode === "camera" && (
-          <button
-            onClick={handleStop}
-            className="rounded-xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow transition hover:bg-white"
-          >
-            Detener
-          </button>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
+
+      {hasFace && !isProcessing && (
+        <>
+          <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-black/40 px-4 py-1 text-xs font-medium text-white backdrop-blur-sm">
+            Resultado
+          </div>
+          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 flex-wrap justify-center gap-3">
+            <button
+              onClick={() => {
+                download();
+              }}
+              className="flex items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]">
+              <Download size={18} />
+              Descargar resultado
+            </button>
+            <button
+              onClick={() => {
+                setUploadedImage(null);
+                setOverlay(null);
+                setHasFace(false);
+                setError(null);
+              }}
+              className="flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow transition hover:bg-white">
+              <Upload size={16} />
+              Reiniciar
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
