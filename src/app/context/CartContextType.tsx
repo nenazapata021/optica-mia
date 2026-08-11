@@ -49,6 +49,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error("Error al cargar el carrito desde localStorage", error);
+      setCartItems([]);
     }
   }, []);
 

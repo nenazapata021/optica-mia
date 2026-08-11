@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/src/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import {
   createTransaction,
   getMerchantInfo,
   getWompiErrorMessage,
   type WompiTransaction,
-} from "@/src/services/wompi";
-import { createDemoTransaction, isDemoMode } from "@/src/services/paymentDemo";
+} from "@/services/wompi";
+import { createDemoTransaction, isDemoMode } from "@/services/paymentDemo";
 
 export async function POST(request: Request) {
   try {

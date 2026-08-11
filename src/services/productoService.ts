@@ -1,4 +1,4 @@
-import { prisma } from "@/src/lib/prisma";
+import { prisma } from "../lib/prisma";
 
 export async function getProductos() {
   return prisma.product.findMany({ orderBy: { name: "asc" } });

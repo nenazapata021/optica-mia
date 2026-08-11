@@ -1,14 +1,10 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
-import Image from "next/image";
+import { useRef, useState, useEffect, type ChangeEvent } from "react";
 import { LoaderCircle, Upload, X, Camera } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type Producto } from "../types/producto";
 import { TRY_ON_CONFIG } from "../config/tryOn";
-import { useStaticFaceDetection } from "../hooks/useStaticFaceDetection";
-import { useCanvasRenderer } from "../hooks/useCanvasRenderer";
-import type { OverlayConfig } from "../types/tryOn";
 
 interface ModalProbadorProps {
   producto: Producto;
@@ -19,19 +15,30 @@ interface ModalProbadorProps {
 export default function ModalProbador({ producto, onClose }: ModalProbadorProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
-  const [useCamera, setUseCamera] = useState(false);
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-  const [hasFace, setHasFace] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [modoVideo, setModoVideo] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
 
-  const { detectFromImage, isLoading: staticLoading, error: staticError } = useStaticFaceDetection();
-  const { canvasRef, drawImageFrame } = useCanvasRenderer();
+  const imagenProductoUrl = typeof producto.image === "string"
+    ? producto.image
+    : Array.isArray(producto.image)
+      ? typeof producto.image[0] === "string"
+        ? producto.image[0]
+        : producto.image[0].src
+      : (producto.image as { src: string }).src;
 
-  const imagenProducto = Array.isArray(producto.image) ? producto.image[0] : producto.image;
-  const imagenProductoUrl = typeof imagenProducto === "string" ? imagenProducto : imagenProducto.src;
+  const detenerPropagacion = (event: React.MouseEvent<HTMLDivElement>) => event.stopPropagation();
+
+  useEffect(() => {
+    return () => {
+      stream?.getTracks().forEach((track) => track.stop());
+    };
+  }, [stream]);
 
   const guardarYContinuar = async (fotoUrl: string) => {
     sessionStorage.setItem(TRY_ON_CONFIG.overlay.storageKey, JSON.stringify({
@@ -42,41 +49,74 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
     setTimeout(() => router.push(`/probador?productoId=${encodeURIComponent(producto.id)}`), 2500);
   };
 
+  const validarTipo = (file: File): boolean => {
+    return (TRY_ON_CONFIG.upload.acceptedTypes as readonly string[]).includes(file.type);
+  };
+
   const seleccionarArchivo = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!(TRY_ON_CONFIG.upload.acceptedTypes as readonly string[]).includes(file.type)) {
+    if (!validarTipo(file)) {
       setError(TRY_ON_CONFIG.messages.uploadError);
       event.target.value = "";
       return;
     }
-    guardarYContinuar(URL.createObjectURL(file));
-    event.target.value = "";
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setFotoPreview(dataUrl);
+      event.target.value = "";
+      guardarYContinuar(dataUrl);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const detenerPropagacion = (event: React.MouseEvent<HTMLDivElement>) => event.stopPropagation();
-
-  const handleCameraStart = async () => {
+  const iniciarVideo = async () => {
     try {
-      const video = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      if (cameraRef.current) {
-        cameraRef.current.srcObject = video;
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+      if (videoRef.current) {
+        videoRef.current.srcObject = s;
       }
-      setCameraStream(video);
-      setUseCamera(true);
-      setHasFace(true);
+      setStream(s);
+      setModoVideo(true);
+      setError("");
     } catch {
       setError("No se pudo acceder a la cámara. Verifica permisos.");
     }
   };
 
-  const handleCameraStop = () => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach((track) => track.stop());
+  const detenerVideo = () => {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
     }
-    setCameraStream(null);
-    setUseCamera(false);
-    setHasFace(false);
+    setStream(null);
+    setModoVideo(false);
+  };
+
+  const capturarFoto = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          setFotoPreview(dataUrl);
+          detenerVideo();
+          guardarYContinuar(dataUrl);
+        };
+        reader.readAsDataURL(blob);
+      }
+    }, "image/jpeg", 0.9);
   };
 
   return (
@@ -91,7 +131,7 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
         {cargando ? (
           <div className="py-12">
             <LoaderCircle className="mx-auto mb-5 animate-spin text-[#008294]" size={54} />
-            <h2 className="text-2xl font-bold text-slate-800">Generando simulaci&oacute;n...</h2>
+            <h2 className="text-2xl font-bold text-slate-800">Generando simulación...</h2>
             <p className="mt-3 text-slate-500">Estamos ajustando la montura a tu rostro.</p>
             <div className="mt-7 h-2 overflow-hidden rounded-full bg-slate-100">
               <div className="h-full w-full origin-left animate-[pulse_1s_ease-in-out_infinite] rounded-full bg-[#008294]" />
@@ -100,16 +140,11 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
         ) : (
           <>
             <h2 className="text-2xl font-extrabold text-[#005f6b]">Simulador Virtual IA</h2>
-            <p className="mb-6 mt-2 text-slate-500">Prueba c&oacute;lo te queda esta montura antes de decidirte.</p>
+            <p className="mb-6 mt-2 text-slate-500">Prueba cómo te queda esta montura antes de decidirte.</p>
 
             <div className="mb-7 flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
               <div className="relative h-16 w-16 shrink-0">
-                <Image
-                  src={Array.isArray(producto.image) ? producto.image[0] : producto.image}
-                  alt={producto.name}
-                  fill
-                  className="object-contain"
-                />
+                <img src={imagenProductoUrl} alt={producto.name} className="h-16 w-16 object-contain" />
               </div>
               <div>
                 <p className="text-xs text-slate-500">Montura seleccionada</p>
@@ -119,16 +154,25 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
 
             {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
-            {!useCamera && (
+            {!modoVideo && (
               <>
-                <button
-                  onClick={() => inputRef.current?.click()}
-                  className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-6 font-semibold text-slate-600 transition hover:border-[#008294] hover:bg-slate-50"
-                >
-                  <Upload size={30} />
-                  Subir foto
-                </button>
-                <p className="mt-3 text-xs text-slate-400">Usa una foto frontal con buena iluminaci&oacute;n.</p>
+                <div className="mb-4 flex gap-3">
+                  <button
+                    onClick={() => inputRef.current?.click()}
+                    className="flex flex-1 flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-5 font-semibold text-slate-600 transition hover:border-[#008294] hover:bg-slate-50"
+                  >
+                    <Upload size={26} />
+                    Subir foto
+                  </button>
+                  <button
+                    onClick={iniciarVideo}
+                    className="flex flex-1 flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-5 font-semibold text-slate-600 transition hover:border-[#008294] hover:bg-slate-50"
+                  >
+                    <Camera size={26} />
+                    Usar cámara
+                  </button>
+                </div>
+                <p className="mt-3 text-xs text-slate-400">Usa una foto frontal con buena iluminación.</p>
 
                 <input
                   ref={inputRef}
@@ -140,32 +184,26 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
               </>
             )}
 
-            {useCamera && (
-              <div className="flex flex-col items-center gap-3 mb-4">
-                <div className="relative h-20 w-20 rounded-xl border border-slate-300 bg-slate-900 overflow-hidden">
-                  <video
-                    ref={cameraRef}
-                    playsWhenPlaybackActive
-                    className="w-full h-full object-contain"
-                    autoPlay
-                    muted
-                    playsInline
-                  />
+            {modoVideo && (
+              <div className="mb-4 flex flex-col items-center gap-3">
+                <div className="relative h-56 w-full max-w-xs rounded-xl border border-slate-300 bg-black overflow-hidden">
+                  <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
+                  <canvas ref={canvasRef} className="hidden" />
                 </div>
-                <button
-                  onClick={handleCameraStart}
-                  className="flex items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]">
-                  <Camera size={18} />
-                  Usar cámara
-                </button>
-                {cameraStream && (
+                <div className="flex gap-3">
                   <button
-                    onClick={handleCameraStop}
-                    className="flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow transition hover:bg-white">
-                    <X size={16} />
-                    Detener cámara
+                    onClick={capturarFoto}
+                    className="rounded-xl bg-[#008294] px-5 py-2 font-semibold text-white transition hover:bg-[#005f6b]"
+                  >
+                    Capturar
                   </button>
-                )}
+                  <button
+                    onClick={detenerVideo}
+                    className="rounded-xl bg-white/90 px-4 py-2 font-semibold text-slate-700 shadow transition hover:bg-white"
+                  >
+                    Cancelar
+                  </button>
+                </div>
               </div>
             )}
           </>

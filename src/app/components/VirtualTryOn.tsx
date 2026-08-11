@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { LoaderCircle, Upload, Download, ImageOff, Video, Camera } from "lucide-react";
+import { useState, useEffect, useRef, type ChangeEvent } from "react";
+import { LoaderCircle, Upload, Download, ImageOff, Camera } from "lucide-react";
 import { useCanvasRenderer } from "../hooks/useCanvasRenderer";
 import { MediaPipeFaceMeshEngine } from "../services/mediaPipeFaceMesh";
 import { TRY_ON_CONFIG } from "../config/tryOn";
-import type { FaceLandmarks, OverlayConfig, RunningMode } from "../types/tryOn";
+import type { FaceLandmarks, OverlayConfig } from "../types/tryOn";
 import type { Producto } from "../types/producto";
 
 interface VirtualTryOnProps {
@@ -25,106 +25,182 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier, producto }: VirtualTryOnProps) {
-  const { canvasRef, drawImageFrame, download, clear } = useCanvasRenderer();
+export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier }: VirtualTryOnProps) {
+  const { canvasRef, drawImageFrame, download } = useCanvasRenderer();
 
-  const [uploadedImage, setUploadedImage] = useState<HTMLImageElement | null>(null);
+  const [faceImage, setFaceImage] = useState<HTMLImageElement | null>(null);
+  const [glassesImage, setGlassesImage] = useState<HTMLImageElement | null>(null);
   const [overlay, setOverlay] = useState<OverlayConfig | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [faceDetected, setFaceDetected] = useState<FaceLandmarks | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDetecting, setIsDetecting] = useState(false);
   const [hasFace, setHasFace] = useState(false);
+  const [isModelLoading, setIsModelLoading] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const animFrameRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const faceLandmarksRef = useRef<FaceLandmarks | null>(null);
-  const overlayConfigRef = useRef<OverlayConfig | null>(null);
-  const loadedImageRef = useRef<HTMLImageElement | null>(null);
+
+  const engine = MediaPipeFaceMeshEngine.getInstance();
 
   useEffect(() => {
     let cancelled = false;
     loadImage(glassesImageUrl).then((img) => {
-      if (!cancelled) loadedImageRef.current = img;
+      if (!cancelled) setGlassesImage(img);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [glassesImageUrl]);
 
   useEffect(() => {
     if (!faceSrc || faceSrc === "") return;
     let cancelled = false;
     loadImage(faceSrc).then((img) => {
-      if (!cancelled) {
-        setUploadedImage(img);
-        const engine = MediaPipeFaceMeshEngine.getInstance();
-        const result = engine.detectImage(img);
-        if (result) {
-          const landmarks = engine.extractPreciseLandmarks(result);
-          if (landmarks) {
-            faceLandmarksRef.current = landmarks;
-            overlayConfigRef.current = engine.calculateGlassesOverlay(
-              landmarks,
-              landmarks.imageWidth,
-              landmarks.imageHeight,
-              1,
-              1,
-            );
-            setOverlay(overlayConfigRef.current);
-            setHasFace(true);
-          }
-        }
-      }
+      if (!cancelled) setFaceImage(img);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [faceSrc]);
 
   useEffect(() => {
-    if (!isCameraActive || !videoRef.current) return;
-    if (videoRef.current.readyState < 2) return;
+    if (!faceImage || !glassesImage) return;
+    if (hasFace) return;
 
-    let animFrameId: number;
+    const detect = async () => {
+      try {
+        const loaded = engine.isLoaded();
+        if (!loaded) {
+          setIsModelLoading(true);
+          await engine.load("IMAGE");
+          setIsModelLoading(false);
+        }
+
+        const result = engine.detectImage(faceImage);
+        if (!result) return;
+
+        const landmarks = engine.extractPreciseLandmarks(result);
+        if (!landmarks) {
+          setError(TRY_ON_CONFIG.messages.noFace);
+          return;
+        }
+
+        landmarks.imageWidth = faceImage.naturalWidth;
+        landmarks.imageHeight = faceImage.naturalHeight;
+
+        const overlayConfig = engine.calculateGlassesOverlay(
+          landmarks,
+          faceImage.naturalWidth,
+          faceImage.naturalHeight,
+          glassesImage.naturalWidth,
+          glassesImage.naturalHeight,
+          scaleMultiplier ?? 1,
+        );
+
+        setOverlay(overlayConfig);
+        setHasFace(true);
+        setError(null);
+      } catch {
+        setError(TRY_ON_CONFIG.messages.detectionError);
+      }
+    };
+
+    void detect();
+  }, [faceImage, glassesImage, scaleMultiplier, engine]);
+
+  useEffect(() => {
+    if (!faceImage || !glassesImage || !overlay) return;
+    drawImageFrame(faceImage, glassesImage, overlay);
+  }, [faceImage, glassesImage, overlay, drawImageFrame]);
+
+  useEffect(() => {
+    if (!isCameraActive || !videoRef.current || !glassesImage) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    if (!engine.isLoaded()) {
+      engine.load("IMAGE").catch(() => {});
+      return;
+    }
+
     const detectVideoFrame = () => {
-      const engine = MediaPipeFaceMeshEngine.getInstance();
-      const result = engine.detectVideo(videoRef.current, performance.now());
+      const video = videoRef.current;
+      if (!video || video.readyState < 2) {
+        animFrameRef.current = requestAnimationFrame(detectVideoFrame);
+        return;
+      }
+
+      const ts = Date.now();
+      const result = engine.detectVideo(video, ts);
       if (result) {
         const landmarks = engine.extractPreciseLandmarks(result);
         if (landmarks) {
-          faceLandmarksRef.current = landmarks;
-          const overlay = engine.calculateGlassesOverlay(
+          landmarks.imageWidth = video.videoWidth;
+          landmarks.imageHeight = video.videoHeight;
+
+          const overlayConfig = engine.calculateGlassesOverlay(
             landmarks,
-            landmarks.imageWidth,
-            landmarks.imageHeight,
-            1,
-            1,
+            video.videoWidth,
+            video.videoHeight,
+            glassesImage.naturalWidth,
+            glassesImage.naturalHeight,
+            scaleMultiplier ?? 1,
           );
-          overlayConfigRef.current = overlay;
-          setFaceDetected(landmarks);
-          setOverlay(overlay);
+
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0);
+
+          ctx.save();
+          ctx.translate(overlayConfig.centerX, overlayConfig.centerY);
+          ctx.rotate(overlayConfig.rotation);
+
+          const isOverlay = glassesImage.src.includes("sin-fondo") || glassesImage.src.endsWith(".png");
+          ctx.globalCompositeOperation = isOverlay ? "source-over" : "multiply";
+
+          ctx.drawImage(
+            glassesImage,
+            -overlayConfig.glassesWidth / 2,
+            -overlayConfig.glassesHeight / 2,
+            overlayConfig.glassesWidth,
+            overlayConfig.glassesHeight,
+          );
+          ctx.globalCompositeOperation = "source-over";
+          ctx.restore();
         }
       }
-      animFrameId = requestAnimationFrame(detectVideoFrame);
-    };
-    animFrameId = requestAnimationFrame(detectVideoFrame);
 
-    return () => {
-      cancelAnimationFrame(animFrameId);
+      animFrameRef.current = requestAnimationFrame(detectVideoFrame);
     };
-  }, [isCameraActive]);
+
+    animFrameRef.current = requestAnimationFrame(detectVideoFrame);
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [isCameraActive, glassesImage, canvasRef, scaleMultiplier]);
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      if (faceImage) URL.revokeObjectURL(faceImage.src);
+    };
+  }, [faceImage]);
 
   const startCamera = async () => {
     try {
-      const video = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
       if (videoRef.current) {
-        videoRef.current.srcObject = video;
+        videoRef.current.srcObject = s;
       }
-      setStream(video);
+      streamRef.current = s;
       setIsCameraActive(true);
-      setIsDetecting(true);
-    } catch (err) {
+      setError(null);
+    } catch {
       setError("No se pudo acceder a la cámara. Verifica permisos.");
     }
   };
@@ -133,161 +209,134 @@ export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
     }
-    setStream(null);
+    streamRef.current = null;
     setIsCameraActive(false);
-    setIsDetecting(false);
-    cancelAnimationFrame(animFrameRef.current);
+    setHasFace(false);
+    setOverlay(null);
+    setError(null);
+  };
+
+  const handleUploadFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        setFaceImage(img);
+        setOverlay(null);
+        setHasFace(false);
+        setError(null);
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   return (
     <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl border-4 border-[#005f6b] bg-slate-900 shadow-lg">
       <canvas ref={canvasRef} className="block h-full w-full object-contain" />
 
-      {!uploadedImage && !isCameraActive && (
+      {isModelLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80">
+          <div className="flex items-center gap-3 rounded-xl bg-white px-5 py-3 shadow-lg">
+            <LoaderCircle size={20} className="animate-spin text-[#008294]" />
+            <span className="text-sm font-medium text-slate-700">Cargando IA...</span>
+          </div>
+        </div>
+      )}
+
+      {!faceSrc && !faceImage && !isCameraActive && !isModelLoading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-900/80">
           <ImageOff size={40} className="text-slate-400" />
           <p className="max-w-xs text-center text-sm text-slate-300">
             Sube una foto frontal para probar la montura.
           </p>
-          <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]">
-            <Upload size={18} />
-            Subir foto
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const img = new Image();
-                img.onload = () => {
-                  setUploadedImage(img);
-                  const engine = MediaPipeFaceMeshEngine.getInstance();
-                  const result = engine.detectImage(img);
-                  if (result) {
-                    const landmarks = engine.extractPreciseLandmarks(result);
-                    if (landmarks) {
-                      overlayConfigRef.current = engine.calculateGlassesOverlay(
-                        landmarks,
-                        landmarks.imageWidth,
-                        landmarks.imageHeight,
-                        1,
-                        1,
-                      );
-                      setOverlay(overlayConfigRef.current);
-                      setHasFace(true);
-                    }
-                  }
-                };
-                img.src = URL.createObjectURL(file);
-              }}
-            />
-          </label>
+          <div className="mb-4 flex gap-3">
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]">
+              <Upload size={18} />
+              Subir foto
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleUploadFile}
+              />
+            </label>
+            <button
+              onClick={startCamera}
+              className="flex items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]"
+            >
+              <Camera size={18} />
+              Usar cámara
+            </button>
+          </div>
+          <p className="mt-3 text-xs text-slate-400">Usa una foto frontal con buena iluminación.</p>
+        </div>
+      )}
+
+      {faceSrc && !faceImage && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80">
+          <div className="flex items-center gap-3 rounded-xl bg-white px-5 py-3 shadow-lg">
+            <LoaderCircle size={20} className="animate-spin text-[#008294]" />
+            <span className="text-sm font-medium text-slate-700">Preparando simulación...</span>
+          </div>
         </div>
       )}
 
       {isCameraActive && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-900/80">
-          <Video
-            ref={videoRef}
-            playsWhenPlaybackActive
-            className="max-w-md rounded-xl border border-[#005f6b] object-contain"
-          />
+          <div className="relative h-56 w-full max-w-xs rounded-xl border border-slate-300 bg-black overflow-hidden">
+            <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
+          </div>
           <button
-            onClick={startCamera}
-            className="flex items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]">
-            <Camera size={18} />
-            {isCameraActive ? "Detener cámara" : "Iniciar cámara"}
+            onClick={stopCamera}
+            className="flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow transition hover:bg-white"
+          >
+            Cancelar
           </button>
         </div>
       )}
 
-      {uploadedImage && overlay && (
+      {faceImage && overlay && (
         <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-black/40 px-4 py-1 text-xs font-medium text-white backdrop-blur-sm">
           Resultado
         </div>
       )}
 
-      {isProcessing && (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80">
-          <div className="flex items-center gap-2 rounded-full bg-white px-5 py-3 shadow-lg">
-            <LoaderCircle size={18} className="animate-spin text-[#008294]" />
-            <span className="text-sm font-medium text-slate-700">Analizando rostro...</span>
-          </div>
+      {hasFace && faceImage && (
+        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 flex-wrap justify-center gap-3">
+          <button
+            onClick={() => download()}
+            className="flex items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]">
+            <Download size={18} />
+            Descargar resultado
+          </button>
+          <button
+            onClick={() => {
+              setFaceImage(null);
+              setOverlay(null);
+              setHasFace(false);
+              setError(null);
+            }}
+            className="flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow transition hover:bg-white">
+            <Upload size={16} />
+            Reiniciar
+          </button>
         </div>
       )}
 
-      {error && !isProcessing && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-900/80">
+      {error && !hasFace && faceImage && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80">
           <div className="flex flex-col items-center gap-3 rounded-2xl bg-white px-6 py-5 text-center shadow-lg">
             <ImageOff size={32} className="text-red-500" />
             <p className="max-w-xs text-sm text-slate-700">{error}</p>
             <p className="text-xs text-slate-400">Usa una foto frontal con buena iluminación.</p>
-            <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]">
-              <Upload size={18} />
-              Subir otra foto
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const img = new Image();
-                  img.onload = () => {
-                    setUploadedImage(img);
-                    const engine = MediaPipeFaceMeshEngine.getInstance();
-                    const result = engine.detectImage(img);
-                    if (result) {
-                      const landmarks = engine.extractPreciseLandmarks(result);
-                      if (landmarks) {
-                        overlayConfigRef.current = engine.calculateGlassesOverlay(
-                          landmarks,
-                          landmarks.imageWidth,
-                          landmarks.imageHeight,
-                          1,
-                          1,
-                        );
-                        setOverlay(overlayConfigRef.current);
-                        setHasFace(true);
-                      }
-                    }
-                  };
-                  img.src = URL.createObjectURL(file);
-                }}
-              />
-            </label>
           </div>
         </div>
-      )}
-
-      {hasFace && !isProcessing && (
-        <>
-          <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-black/40 px-4 py-1 text-xs font-medium text-white backdrop-blur-sm">
-            Resultado
-          </div>
-          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 flex-wrap justify-center gap-3">
-            <button
-              onClick={() => {
-                download();
-              }}
-              className="flex items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]">
-              <Download size={18} />
-              Descargar resultado
-            </button>
-            <button
-              onClick={() => {
-                setUploadedImage(null);
-                setOverlay(null);
-                setHasFace(false);
-                setError(null);
-              }}
-              className="flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow transition hover:bg-white">
-              <Upload size={16} />
-              Reiniciar
-            </button>
-          </div>
-        </>
       )}
     </div>
   );

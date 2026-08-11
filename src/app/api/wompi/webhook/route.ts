@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/src/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 const WOMPI_EVENT_SECRET = process.env.WOMPI_EVENT_SECRET ?? "";
 

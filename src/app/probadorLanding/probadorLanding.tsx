@@ -1,61 +1,54 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import Image from "next/image"; 
+import Image from "next/image";
+import { type StaticImageData } from "next/image";
 import { type Producto } from "../types/producto";
 import ModalProbador from "../modal probador/modalProbador";
+import { productosLentes, productosGafasSol } from "../data/productos.js";
 
-// Las monturas (medidas) usan las PNG transparentes de /public/monturas.
-const foto1 = '/monturas/foto1.png';
-const foto2 = '/monturas/foto2.png';
-const foto3 = '/monturas/foto3.png';
-const foto4 = '/monturas/foto4.png';
-const foto5 = '/monturas/foto5.png';
-const foto6 = '/monturas/foto6.png';
-const foto7 = '/monturas/foto7.png';
-const foto8 = '/monturas/foto8.png';
-const foto9 = '/monturas/foto9.png';
-const foto10 = '/monturas/foto10.png';
-const foto11 = '/monturas/foto11.png';
-const foto12 = '/monturas/foto12.png';
-const foto13 = '/monturas/foto13.png';
-const foto14 = '/monturas/foto14.png';
-const foto15 = '/monturas/foto15.png';
-const foto16 = '/monturas/foto16.png';
-const foto17 = '/monturas/foto17.png';
-const foto18 = '/monturas/foto18.png';
-const foto19 = '/monturas/foto19.png';
-const foto20 = '/monturas/foto20.png';
-const foto21 = '/monturas/foto21.png';
+interface ProductoRaw {
+  id: string;
+  nombre: string;
+  precio: number;
+  color: string;
+  imagen: string | StaticImageData;
+  scaleMultiplier?: number;
+}
 
-const todosProd: Producto[] = [
-  { id: 'p1',  name: 'Montura Clásica',         price: 120000, image: foto1,  categoria: 'mujer',  color: 'Transparente', descripcion: '' },
-  { id: 'p2',  name: 'Montura Rosa',            price: 150000, image: foto2,  categoria: 'mujer',  color: 'Rosa',         descripcion: '' },
-  { id: 'p3',  name: 'Montura Dorada',          price: 180000, image: foto3,  categoria: 'mujer',  color: 'Dorado',       descripcion: '' },
-  { id: 'p4',  name: 'Montura Ejecutiva',       price: 175000, image: foto4,  categoria: 'hombre', color: 'Cobre',        descripcion: '' },
-  { id: 'p5',  name: 'Montura Kids',            price:  95000, image: foto5,  categoria: 'niños',  color: 'Cobre',        descripcion: '' },
-  { id: 'p6',  name: 'Gafas de Sol Aviador',    price: 210000, image: foto6,  categoria: 'sol',    color: 'Negro',        descripcion: '' },
-  { id: 'p7',  name: 'Montura Carey',           price: 135000, image: foto7,  categoria: 'mujer',  color: 'Carey',        descripcion: '' },
-  { id: 'p8',  name: 'Montura Metálica',        price: 190000, image: foto8,  categoria: 'hombre', color: 'Plateado',     descripcion: '' },
-  { id: 'p9',  name: 'Gafas de Sol Polarizadas',price: 230000, image: foto9,  categoria: 'sol',    color: 'Negro',        descripcion: '' },
-  { id: 'p10', name: 'Montura Infantil Azul',   price:  85000, image: foto10, categoria: 'niños',  color: 'Azul',         descripcion: '' },
-  { id: 'p11', name: 'Montura Elegante',        price: 200000, image: foto11, categoria: 'mujer',  color: 'Dorado',       descripcion: '' },
-  { id: 'p12', name: 'Montura Deportiva',       price: 160000, image: foto12, categoria: 'hombre', color: 'Rojo',         descripcion: '' },
-  { id: 'p13', name: 'Gafas de Sol Vintage',    price: 195000, image: foto13, categoria: 'sol',    color: 'Miel',         descripcion: '' },
-  { id: 'p14', name: 'Montura Gato',            price: 140000, image: foto14, categoria: 'mujer',  color: 'Negro',        descripcion: '' },
-  { id: 'p15', name: 'Montura Rectangular',     price: 170000, image: foto15, categoria: 'hombre', color: 'Grafito',      descripcion: '' },
-  { id: 'p16', name: 'Gafas de Sol Redondas',   price: 220000, image: foto16, categoria: 'sol',    color: 'Dorado',       descripcion: '' },
-  { id: 'p17', name: 'Montura Infantil Rosa',   price:  90000, image: foto17, categoria: 'niños',  color: 'Rosa',         descripcion: '' },
-  { id: 'p18', name: 'Montura Minimalista',     price: 155000, image: foto18, categoria: 'mujer',  color: 'Blanco',       descripcion: '' },
-  { id: 'p19', name: 'Montura Clubmaster',      price: 185000, image: foto19, categoria: 'hombre', color: 'Carey',        descripcion: '' },
-  { id: 'p20', name: 'Gafas de Sol Deportivas', price: 240000, image: foto20, categoria: 'sol',    color: 'Azul',         descripcion: '' },
-  { id: 'p21', name: 'Montura Aviador',         price: 210000, image: foto21, categoria: 'hombre', color: 'Plateado',     descripcion: '' },
+const mapearProductos = (): Producto[] => [
+  ...productosLentes.map((p: ProductoRaw) => ({
+    id: p.id,
+    name: p.nombre,
+    price: p.precio,
+    image: p.imagen,
+    categoria: "lentes",
+    color: p.color,
+    descripcion: "",
+    scaleMultiplier: p.scaleMultiplier,
+  })),
+  ...productosGafasSol.map((p: ProductoRaw) => ({
+    id: p.id,
+    name: p.nombre,
+    price: p.precio,
+    image: p.imagen,
+    categoria: "sol",
+    color: p.color,
+    descripcion: "",
+  })),
 ];
 
 export default function ProbadorLanding() {
   const [categoriaSel, setCategoriaSel] = useState("todos");
   const [productoParaProbar, setProductoParaProbar] = useState<Producto | null>(null);
   const primerRender = useRef(true);
+
+  const todosProd = React.useMemo(() => mapearProductos(), []);
+
+  const categorias = React.useMemo(
+    () => ["todos", ...Array.from(new Set(todosProd.map((p) => p.categoria)))],
+    [todosProd],
+  );
 
   useEffect(() => {
     const guardado = localStorage.getItem("optica-mia-filtro-categoria");
@@ -77,9 +70,6 @@ export default function ProbadorLanding() {
     if (categoriaSel === "todos") return true;
     return p.categoria === categoriaSel;
   });
-
-  // Derivamos las categorías dinámicamente de los productos
-  const categorias = ["todos", ...Array.from(new Set(todosProd.map(p => p.categoria)))];
 
   const getButtonClass = (cat: string) =>
     categoriaSel === cat
@@ -104,14 +94,14 @@ export default function ProbadorLanding() {
         <div className="max-w-6xl mx-auto text-center mb-10">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">Catálogo Probador Virtual</h1>
           <p className="text-gray-600 max-w-xl mx-auto">Selecciona la montura que más te guste y mírala en tu rostro al instante usando IA.</p>
-          
+
           {/* Filtros estilizados idénticos */}
           <div className="flex justify-center gap-3 mt-6 flex-wrap">
             {categorias.map((cat) => (
-              <button 
-                key={cat} 
-                onClick={() => setCategoriaSel(cat)} 
-                className={getButtonClass(cat)} 
+              <button
+                key={cat}
+                onClick={() => setCategoriaSel(cat)}
+                className={getButtonClass(cat)}
                 style={getButtonStyle(cat)}
               >
                 {cat}
@@ -134,15 +124,15 @@ export default function ProbadorLanding() {
         <div className="max-w-6xl mx-auto grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filtrados.map((producto) => (
             <div key={producto.id} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-              
+
               {/* Contenedor de Imagen adaptado con Next.js Image Component */}
               <div className="relative w-full h-56 rounded-xl overflow-hidden mb-4 bg-gray-50 flex items-center justify-center">
-                <Image 
-                  src={Array.isArray(producto.image) ? producto.image[0] : producto.image} 
-                  alt={producto.name} 
+                <Image
+                  src={Array.isArray(producto.image) ? producto.image[0] : producto.image}
+                  alt={producto.name}
                   fill
                   sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-contain p-4 mix-blend-multiply" 
+                  className="object-contain p-4 mix-blend-multiply"
                 />
               </div>
 
@@ -163,8 +153,8 @@ export default function ProbadorLanding() {
                 </div>
 
                 <div className="mt-auto">
-                  <button 
-                    onClick={() => setProductoParaProbar(producto)} 
+                  <button
+                    onClick={() => setProductoParaProbar(producto)}
                     className="w-full py-2.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition flex items-center justify-center gap-2"
                     style={{ backgroundColor: "#008294" }}
                   >

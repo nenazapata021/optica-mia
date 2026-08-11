@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/src/lib/prisma";
-import { getTransaction } from "@/src/services/wompi";
-import { isDemoMode } from "@/src/services/paymentDemo";
+import { prisma } from "@/lib/prisma";
+import { getTransaction } from "@/services/wompi";
+import { isDemoMode } from "@/services/paymentDemo";
 
 const DEMO_NEQUI_APPROVE_DELAY_MS = 8000;
 
