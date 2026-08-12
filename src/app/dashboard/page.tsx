@@ -50,7 +50,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Lectura de sessionStorage en montaje; evita mismatch de hidratación SSR
     if (sessionStorage.getItem(AUTH_KEY) === "1") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAuthed(true);
     }
   }, []);

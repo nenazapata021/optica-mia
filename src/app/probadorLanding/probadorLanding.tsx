@@ -53,6 +53,7 @@ export default function ProbadorLanding() {
   useEffect(() => {
     const guardado = localStorage.getItem("optica-mia-filtro-categoria");
     if (guardado && categorias.includes(guardado)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCategoriaSel(guardado);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

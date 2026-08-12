@@ -108,6 +108,8 @@ export default function CarritoPage() {
   const [editColorId, setEditColorId] = useState<string | null>(null);
 
   useEffect(() => {
+    // Marca el componente como montado en cliente (evita mismatch de hidratación SSR)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsClient(true);
   }, []);
 

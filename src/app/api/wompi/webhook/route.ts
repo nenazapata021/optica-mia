@@ -12,7 +12,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
     }
 
-    const event = body.event;
     const transaction = body.data?.transaction;
 
     if (!transaction?.id) {

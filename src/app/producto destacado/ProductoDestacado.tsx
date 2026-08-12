@@ -47,7 +47,7 @@ interface ProductoDestacadoProps {
 }
 
 export default function ProductoDestacado({ productoInicial, imagenUsuario }: ProductoDestacadoProps) {
-  const { detectFromImage, isLoading: isModelLoading, loadModel } = useFaceDetection();
+  const { detectFromImage, loadModel } = useFaceDetection();
   const { canvasRef, renderWithOverlay, renderFallback } = useCanvasRenderer();
 
   const [productoSeleccionado, setProductoSeleccionado] = useState<Producto>(productoInicial);
@@ -87,6 +87,8 @@ export default function ProductoDestacado({ productoInicial, imagenUsuario }: Pr
   }, [loadModel, detectFromImage, renderWithOverlay, renderFallback, overlayUrl]);
 
   useEffect(() => {
+    // Reacciona al cambio de la foto del usuario; initTryOn actualiza estado internamente
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (userPhotoUrl) initTryOn(userPhotoUrl);
   }, [userPhotoUrl, initTryOn]);
 

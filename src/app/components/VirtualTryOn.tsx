@@ -5,7 +5,7 @@ import { LoaderCircle, Upload, Download, ImageOff, Camera } from "lucide-react";
 import { useCanvasRenderer } from "../hooks/useCanvasRenderer";
 import { MediaPipeFaceMeshEngine } from "../services/mediaPipeFaceMesh";
 import { TRY_ON_CONFIG } from "../config/tryOn";
-import type { FaceLandmarks, OverlayConfig } from "../types/tryOn";
+import type { OverlayConfig } from "../types/tryOn";
 import type { Producto } from "../types/producto";
 
 interface VirtualTryOnProps {
@@ -106,6 +106,7 @@ export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier
     };
 
     void detect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [faceImage, glassesImage, scaleMultiplier, engine]);
 
   useEffect(() => {
@@ -180,6 +181,7 @@ export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCameraActive, glassesImage, canvasRef, scaleMultiplier]);
 
   useEffect(() => {

@@ -37,6 +37,7 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
     const guardado = localStorage.getItem("optica-mia-filtro-categoria");
     const categoriasValidas = ["todos", ...Array.from(new Set(listaProductos.map(p => p.categoria)))];
     if (guardado && categoriasValidas.includes(guardado)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFiltro(guardado);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

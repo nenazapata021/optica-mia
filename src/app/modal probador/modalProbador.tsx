@@ -22,7 +22,7 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
   const [error, setError] = useState("");
   const [modoVideo, setModoVideo] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [, setFotoPreview] = useState<string | null>(null);
 
   const imagenProductoUrl = typeof producto.image === "string"
     ? producto.image
@@ -144,6 +144,7 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
 
             <div className="mb-7 flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
               <div className="relative h-16 w-16 shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={imagenProductoUrl} alt={producto.name} className="h-16 w-16 object-contain" />
               </div>
               <div>

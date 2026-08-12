@@ -116,7 +116,6 @@ function IconoPaso2({ tipo }: { tipo: "ban" | "monitor" | "sun-moon" }) {
 }
 
 export default function TipoLenteModal({
-  producto,
   colores,
   onSelect,
   onClose,

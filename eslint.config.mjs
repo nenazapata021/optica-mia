@@ -12,6 +12,19 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Agent/tooling/vendor directories that are not part of the app:
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".continue/**",
+    ".cursor/**",
+    ".gemini/**",
+    ".opencode/**",
+    ".windsurf/**",
+    ".openspec/**",
+    "node_modules/**",
+    "src/generated/**",
+    "*.config.mjs",
   ]),
 ]);
 

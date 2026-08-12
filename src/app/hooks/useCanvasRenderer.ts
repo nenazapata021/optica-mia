@@ -47,11 +47,11 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       const leftEyePx = { x: landmarks.leftEye.x * ratio, y: landmarks.leftEye.y * ratio };
       const rightEyePx = { x: landmarks.rightEye.x * ratio, y: landmarks.rightEye.y * ratio };
 
-      let centerXPx = (leftEyePx.x + rightEyePx.x) / 2;
-      let centerYPx = (leftEyePx.y + rightEyePx.y) / 2;
-      let eyeDX = rightEyePx.x - leftEyePx.x;
-      let eyeDY = rightEyePx.y - leftEyePx.y;
-      let eyeDistance = Math.sqrt(eyeDX * eyeDX + eyeDY * eyeDY);
+      const centerXPx = (leftEyePx.x + rightEyePx.x) / 2;
+      const centerYPx = (leftEyePx.y + rightEyePx.y) / 2;
+      const eyeDX = rightEyePx.x - leftEyePx.x;
+      const eyeDY = rightEyePx.y - leftEyePx.y;
+      const eyeDistance = Math.sqrt(eyeDX * eyeDX + eyeDY * eyeDY);
 
       const rotation = Math.atan2(eyeDY, eyeDX);
 

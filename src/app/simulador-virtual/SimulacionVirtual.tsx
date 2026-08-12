@@ -24,6 +24,7 @@ export default function SimulacionVirtual() {
     try {
       const guardado = sessionStorage.getItem("optica-mia-try-on");
       if (guardado) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDatos(JSON.parse(guardado) as DatosSimulacion);
       }
     } catch {

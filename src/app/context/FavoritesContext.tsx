@@ -52,6 +52,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    // Lectura de localStorage en montaje; evita mismatch de hidratación SSR
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCustomerId(getCustomerId());
     setFavorites(loadLocalFavorites());
     setLoaded(true);
