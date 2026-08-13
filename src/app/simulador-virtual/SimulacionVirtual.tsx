@@ -101,7 +101,13 @@ export default function SimulacionVirtual() {
           {/* Probador virtual - Columna principal */}
           <div className="lg:col-span-3">
             <div className="sticky top-20">
-              <VirtualTryOn glassesImageUrl={overlayUrl} faceSrc={datos.fotoUrl} scaleMultiplier={datos.producto.scaleMultiplier} />
+              <VirtualTryOn
+          glassesFrontalImageUrl={datos.producto.image}
+          glassesTempleLeftImageUrl={datos.producto.image}
+          glassesTempleRightImageUrl={datos.producto.image}
+          faceSrc={datos.fotoUrl}
+          scaleMultiplier={datos.producto.scaleMultiplier}
+        />
 
               <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-400">
                 <div className="h-1.5 w-1.5 rounded-full bg-green-400" />

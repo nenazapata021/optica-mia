@@ -9,7 +9,9 @@ import type { OverlayConfig } from "../types/tryOn";
 import type { Producto } from "../types/producto";
 
 interface VirtualTryOnProps {
-  glassesImageUrl: string;
+  glassesFrontalImageUrl: string;
+  glassesTempleLeftImageUrl: string;
+  glassesTempleRightImageUrl: string;
   faceSrc?: string;
   scaleMultiplier?: number;
   producto?: Producto;
@@ -25,11 +27,101 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier }: VirtualTryOnProps) {
+function drawThreePieceGlasses(
+  faceImage: HTMLImageElement,
+  glassesImage: HTMLImageElement,
+  leftTempleImage: HTMLImageElement,
+  rightTempleImage: HTMLImageElement,
+  overlay: OverlayConfig & { leftTempleOpacity: number; rightTempleOpacity: number },
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
+): void {
+  const canvas = canvasRef.current;
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  canvas.width = faceImage.naturalWidth;
+  canvas.height = faceImage.naturalHeight;
+
+  ctx.drawImage(faceImage, 0, 0, canvas.width, canvas.height);
+
+  const { centerX, centerY, scale, rotation, glassesWidth, glassesHeight, verticalOffset } = overlay;
+  const { leftTempleOpacity, rightTempleOpacity } = overlay;
+
+  // Dibujar frontal de la gafa (centrado sobre el puente)
+  ctx.save();
+  ctx.translate(centerX, centerY + (overlay.verticalOffset || 0));
+  ctx.rotate(rotation);
+
+  const isFrontalOverlay = glassesImage.src.includes("sin-fondo") || glassesImage.src.endsWith(".png");
+  ctx.globalCompositeOperation = isFrontalOverlay ? "source-over" : "multiply";
+
+  ctx.drawImage(
+    glassesImage,
+    -glassesWidth / 2,
+    -glassesHeight / 2,
+    glassesWidth,
+    glassesHeight,
+  );
+  ctx.globalCompositeOperation = "source-over";
+  ctx.restore();
+
+  // Dibujar pata izquierda
+  ctx.save();
+  ctx.globalAlpha = leftTempleOpacity;
+
+  const templeLeftX = centerX - glassesWidth / 2 - 20;
+  const templeLeftY = centerY + (verticalOffset || 0) + 30;
+
+  ctx.translate(templeLeftX, templeLeftY);
+  ctx.rotate(rotation);
+
+  const templeScale = glassesWidth / 60;
+  ctx.drawImage(
+    leftTempleImage,
+    -20 * templeScale,
+    -120 * templeScale,
+    40 * templeScale,
+    240 * templeScale,
+  );
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // Dibujar pata derecha
+  ctx.save();
+  ctx.globalAlpha = rightTempleOpacity;
+
+  const templeRightX = centerX + glassesWidth / 2 + 20;
+  const templeRightY = centerY + (verticalOffset || 0) + 30;
+
+  ctx.translate(templeRightX, templeRightY);
+  ctx.rotate(rotation);
+
+  ctx.drawImage(
+    rightTempleImage,
+    -20 * templeScale,
+    -120 * templeScale,
+    40 * templeScale,
+    240 * templeScale,
+  );
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+export default function VirtualTryOn({
+  glassesFrontalImageUrl,
+  glassesTempleLeftImageUrl,
+  glassesTempleRightImageUrl,
+  faceSrc,
+  scaleMultiplier,
+}: VirtualTryOnProps) {
   const { canvasRef, drawImageFrame, download } = useCanvasRenderer();
 
   const [faceImage, setFaceImage] = useState<HTMLImageElement | null>(null);
   const [glassesImage, setGlassesImage] = useState<HTMLImageElement | null>(null);
+  const [leftTempleImage, setLeftTempleImage] = useState<HTMLImageElement | null>(null);
+  const [rightTempleImage, setRightTempleImage] = useState<HTMLImageElement | null>(null);
   const [overlay, setOverlay] = useState<OverlayConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -44,13 +136,21 @@ export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier
 
   useEffect(() => {
     let cancelled = false;
-    loadImage(glassesImageUrl).then((img) => {
-      if (!cancelled) setGlassesImage(img);
+    Promise.all([
+      loadImage(glassesFrontalImageUrl),
+      loadImage(glassesTempleLeftImageUrl),
+      loadImage(glassesTempleRightImageUrl),
+    ]).then(([frontal, leftTemple, rightTemple]) => {
+      if (!cancelled) {
+        setGlassesImage(frontal);
+        setLeftTempleImage(leftTemple);
+        setRightTempleImage(rightTemple);
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [glassesImageUrl]);
+  }, [glassesFrontalImageUrl, glassesTempleLeftImageUrl, glassesTempleRightImageUrl]);
 
   useEffect(() => {
     if (!faceSrc || faceSrc === "") return;
@@ -88,6 +188,24 @@ export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier
         landmarks.imageWidth = faceImage.naturalWidth;
         landmarks.imageHeight = faceImage.naturalHeight;
 
+        // Calcular yaw usando distancias ojo-nariz
+        const faceLm = result.faceLandmarks[0];
+        const noseTip = { x: faceLm[1].x, y: faceLm[1].y };
+        const leftEyeOuter = { x: faceLm[133].x, y: faceLm[133].y };
+        const rightEyeOuter = { x: faceLm[361].x, y: faceLm[361].y };
+
+        const leftDist = Math.hypot(noseTip.x - leftEyeOuter.x, noseTip.y - leftEyeOuter.y);
+        const rightDist = Math.hypot(noseTip.x - rightEyeOuter.x, noseTip.y - rightEyeOuter.y);
+        const yawRatio = leftDist / rightDist; // >1 indica giro a la izquierda, <1 a la derecha
+
+        // Factor de reducción de opacidad
+        const opacityFactor = 0.8;
+        const templeOpacity = Math.max(0.2, 1 - Math.abs(1 - yawRatio) * opacityFactor);
+
+        // Determinar opacidad según el yaw
+        const leftTempleOpacityValue = yawRatio > 1 ? templeOpacity : 1;
+        const rightTempleOpacityValue = yawRatio < 1 ? templeOpacity : 1;
+
         const overlayConfig = engine.calculateGlassesOverlay(
           landmarks,
           faceImage.naturalWidth,
@@ -97,7 +215,11 @@ export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier
           scaleMultiplier ?? 1,
         );
 
-        setOverlay(overlayConfig);
+        setOverlay({
+          ...overlayConfig,
+          leftTempleOpacity: leftTempleOpacityValue,
+          rightTempleOpacity: rightTempleOpacityValue,
+        });
         setHasFace(true);
         setError(null);
       } catch {
@@ -110,9 +232,17 @@ export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier
   }, [faceImage, glassesImage, scaleMultiplier, engine]);
 
   useEffect(() => {
-    if (!faceImage || !glassesImage || !overlay) return;
-    drawImageFrame(faceImage, glassesImage, overlay);
-  }, [faceImage, glassesImage, overlay, drawImageFrame]);
+    if (!faceImage || !glassesImage || !leftTempleImage || !rightTempleImage) return;
+    if (!overlay) return;
+    drawThreePieceGlasses(
+      faceImage,
+      glassesImage,
+      leftTempleImage!,
+      rightTempleImage!,
+      overlay,
+      canvasRef,
+    );
+  }, [faceImage, glassesImage, leftTempleImage, rightTempleImage, overlay, canvasRef]);
 
   useEffect(() => {
     if (!isCameraActive || !videoRef.current || !glassesImage) return;
@@ -162,6 +292,7 @@ export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier
           const isOverlay = glassesImage.src.includes("sin-fondo") || glassesImage.src.endsWith(".png");
           ctx.globalCompositeOperation = isOverlay ? "source-over" : "multiply";
 
+          // Dibujar frontal
           ctx.drawImage(
             glassesImage,
             -overlayConfig.glassesWidth / 2,
@@ -169,6 +300,48 @@ export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier
             overlayConfig.glassesWidth,
             overlayConfig.glassesHeight,
           );
+
+          // Dibujar pata izquierda con opacidad
+          ctx.save();
+          ctx.globalAlpha = overlayConfig.leftTempleOpacity;
+
+          const templeLeftX = overlayConfig.centerX - overlayConfig.glassesWidth / 2 - 20;
+          const templeLeftY = overlayConfig.centerY + 30;
+
+          ctx.translate(templeLeftX, templeLeftY);
+          ctx.rotate(overlayConfig.rotation);
+
+          const templeScale = overlayConfig.glassesWidth / 60;
+          ctx.drawImage(
+            leftTempleImage!,
+            -20 * templeScale,
+            -120 * templeScale,
+            40 * templeScale,
+            240 * templeScale,
+          );
+          ctx.globalAlpha = 1;
+          ctx.restore();
+
+          // Dibujar pata derecha con opacidad
+          ctx.save();
+          ctx.globalAlpha = overlayConfig.rightTempleOpacity;
+
+          const templeRightX = overlayConfig.centerX + overlayConfig.glassesWidth / 2 + 20;
+          const templeRightY = overlayConfig.centerY + 30;
+
+          ctx.translate(templeRightX, templeRightY);
+          ctx.rotate(overlayConfig.rotation);
+
+          ctx.drawImage(
+            rightTempleImage!,
+            -20 * templeScale,
+            -120 * templeScale,
+            40 * templeScale,
+            240 * templeScale,
+          );
+          ctx.globalAlpha = 1;
+          ctx.restore();
+
           ctx.globalCompositeOperation = "source-over";
           ctx.restore();
         }
@@ -296,7 +469,7 @@ export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier
           </div>
           <button
             onClick={stopCamera}
-            className="flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow transition hover:bg-white"
+            className="flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow transition:hover:bg-white"
           >
             Cancelar
           </button>
@@ -313,7 +486,7 @@ export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier
         <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 flex-wrap justify-center gap-3">
           <button
             onClick={() => download()}
-            className="flex items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]">
+            className="flex items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition:hover:bg-[#005f6b]">
             <Download size={18} />
             Descargar resultado
           </button>
@@ -324,7 +497,7 @@ export default function VirtualTryOn({ glassesImageUrl, faceSrc, scaleMultiplier
               setHasFace(false);
               setError(null);
             }}
-            className="flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow transition hover:bg-white">
+            className="flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow transition:hover:bg-white">
             <Upload size={16} />
             Reiniciar
           </button>

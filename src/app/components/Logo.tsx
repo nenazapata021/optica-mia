@@ -1,5 +1,5 @@
 import Image from "next/image";
-import logoOpticaMia from "../assets/optica-mia.jpg";
+import logoOpticaMia from "../assets/logos/optica-mia.jpeg";
 
 interface LogoProps {
   size?: number;

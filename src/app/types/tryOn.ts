@@ -26,6 +26,8 @@ export interface OverlayConfig {
   glassesWidth: number;
   glassesHeight: number;
   verticalOffset: number;
+  leftTempleOpacity: number;
+  rightTempleOpacity: number;
 }
 
 export type RunningMode = "IMAGE" | "VIDEO";

@@ -192,6 +192,8 @@ export class MediaPipeFaceMeshEngine {
       glassesWidth,
       glassesHeight,
       verticalOffset,
+      leftTempleOpacity: 1,
+      rightTempleOpacity: 1,
     };
   }
 

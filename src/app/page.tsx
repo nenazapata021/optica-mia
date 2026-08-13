@@ -1,25 +1,4 @@
-import logoOriginalOpticaMia from "./assets/Logo-optica-mia-original.jpg";
-import foto1SinFondo from './assets/FOTO1 Agatada. Referencia 8306.png';  
-import foto2SinFondo from './assets/FOTO2-Agatada. Referencia 24028.png'; 
-import foto3SinFondo from './assets/FOTO3-Vintage. Referencia 6019.png'; 
-import foto4SinFondo from './assets/FOTO4-Ovalada. Referencia volt.png'; 
-import foto5SinFondo from './assets/FOTO5-Agatada. Retro.png'; 
-import foto6SinFondo from './assets/FOTO6-Agatada. Referencia retro.png'; 
-import foto7SinFondo from './assets/FOTO7-Ágatada. Referencia retro.png';
-import foto8SinFondo from './assets/FOTO8-Ovalada. Referencia Ser27.png';
-import foto9SinFondo from './assets/FOTO9-Tres piezas. Referencia ctr8808.png';
-import foto10SinFondo from './assets/FOTO10-Cuadrada. Ac086.png';
-import foto11SinFondo from './assets/FOTO11-Cuadrada. Referencia Mir3206.png';
-import foto12SinFondo from './assets/FOTO12-Cuadrada. Referencia 6516.png';
-import foto13SinFondo from './assets/FOTO13-Ovalado. Referencia 6019.png';
-import foto14SinFondo from './assets/FOTO14-Cuadrada. Referencia Dav5103.png';
-import foto15SinFondo from './assets/FOTO15-Aviador. Referencia 82253.png';
-import foto16SinFondo from './assets/FOTO16-Al aire. Referencia 6340.png';
-import foto17SinFondo from './assets/FOTO17-Agatada. Referencia retro.png';
-import foto18SinFondo from './assets/FOTO18-Cuadrada. Dav5107.png';
-import foto19SinFondo from './assets/FOTO19-Cuadrada. Referencia boen.png';
-import foto20SinFondo from './assets/FOTO20-Agatada. Referencia 81001.png';
-import foto21SinFondo from './assets/FOTO21-Gafa de sol. Referencia Mia01.png';
+import logoOriginalOpticaMia from "./assets/logos/Logo-optica-mia-original.jpg";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -29,32 +8,31 @@ import Servicios from "./servicios/servicios";
 import ProcesoCompra from "./proceso compra/ProcesoCompra";
 import Contacto from "./contacto/contacto";
 import Testimonios from "./testimonios/Testimonios";
-
-const productosInicio = [
-    { id: 'p1',  name: 'Agatada',                 reference: '8306',  price: 117000, image: foto1SinFondo,  categoria: 'mujer',  color: 'Vinotinto'},
-    { id: 'p2',  name: 'Agatada',                 reference: '24028',  price: 117000, image: foto2SinFondo,  categoria: 'mujer',  color: 'marrón grisáceo'},
-    { id: 'p3',  name: 'Vintage',                 reference: '6019',  price: 180000, image: foto3SinFondo,  categoria: 'mujer',  color: 'Dorado'},
-    { id: 'p4',  name: 'Ovalada',                 reference: 'volt',  price: 110000, image: foto4SinFondo,  categoria: 'hombre', color: 'Dorado'},
-    { id: 'p5',  name: 'Agatada',                 reference: 'Retro',  price:  124800, image: foto5SinFondo,  categoria: 'niños',  color: 'Nude-rosado'},
-    { id: 'p6',  name: 'Agatada',                 reference: 'Retro',  price: 117000, image: foto6SinFondo,  categoria: 'sol',    color: 'Rojo-vino'},
-    { id: 'p7',  name: 'Agatada',                 reference: 'Retro',  price: 117000, image: foto7SinFondo,  categoria: 'mujer',  color: 'Carey-tortoise'},
-    { id: 'p8',  name: 'Ovalada',                 reference: 'Ser27',  price: 125000, image: foto8SinFondo,  categoria: 'hombre', color: 'Negro'},
-    { id: 'p9',  name: 'Tres piezas',             reference: 'ctr8808',  price: 117000, image: foto9SinFondo,  categoria: 'sol',    color: 'Plateado'},
-    { id: 'p10', name: 'Cuadrada',                reference: 'Ac086',  price:  135000, image: foto10SinFondo, categoria: 'niños',  color: 'Azul'},
-    { id: 'p11', name: 'Cuadrada',                reference: 'Mir3206',  price: 125000, image: foto11SinFondo, categoria: 'mujer',  color: 'Cat-eyet/mariposa'},
-    { id: 'p12', name: 'Cuadrada',                reference: '6516',  price: 89000, image: foto12SinFondo, categoria: 'hombre', color: 'Negro Mate'},
-    { id: 'p13', name: 'Ovalado',                 reference: '6019',  price: 99000, image: foto13SinFondo, categoria: 'sol',    color: 'Plateado'},
-    { id: 'p14', name: 'Cuadrada',                reference: 'Dav5103',  price: 133000, image: foto14SinFondo, categoria: 'mujer',  color: 'Negro'},
-    { id: 'p15', name: 'Aviador',                 reference: '82253',  price: 125000, image: foto15SinFondo, categoria: 'hombre', color: 'Dorado'},
-    { id: 'p16', name: 'Al aire',                 reference: '6340',  price: 155000, image: foto16SinFondo, categoria: 'sol',    color: 'Plateado'},
-    { id: 'p17', name: 'Agatada',                 reference: 'Retro',  price:  125000, image: foto17SinFondo, categoria: 'niños',  color: 'Fucsia/rosa neon'},
-    { id: 'p18', name: 'Cuadrada',                reference: 'Dav5107',  price: 133000, image: foto18SinFondo, categoria: 'mujer',  color: 'Negro'},
-    { id: 'p19', name: 'Cuadrada',                reference: 'boen',  price: 110000, image: foto19SinFondo, categoria: 'hombre', color: 'Negro'},
-    { id: 'p20', name: 'Agatada',                 reference: '81001',  price: 125000, image: foto20SinFondo, categoria: 'sol',    color: 'Dorado'},
-    { id: 'p21', name: 'Gafas de sol',            reference: 'Mia01',  price: 55000, image: foto21SinFondo, categoria: 'hombre', color: 'gris'},
-  ];
+import { productosLentes, productosGafasSol } from "./data/productos.js";
+import type { Producto } from "./types/producto";
 
 export default function Home() {
+  const productosDestacados: Producto[] = [
+    ...productosLentes.map((p) => ({
+      id: p.id,
+      name: p.nombre,
+      price: p.precio,
+      image: p.imagen,
+      categoria: "lentes" as const,
+      color: p.color,
+      descripcion: "",
+    })),
+    ...productosGafasSol.map((p) => ({
+      id: p.id,
+      name: p.nombre,
+      price: p.precio,
+      image: p.imagen,
+      categoria: "sol" as const,
+      color: p.color,
+      descripcion: "",
+    })),
+  ];
+
   return (
 
       <div className="w-full flex flex-col items-center">
@@ -125,7 +103,7 @@ export default function Home() {
         <Catalogo 
           titulo="Modelos Destacados"
           descripcion="Nuestra selección exclusiva para ti hoy."
-          listaProductos={productosInicio} 
+          listaProductos={productosDestacados}
         />
       </div>
 

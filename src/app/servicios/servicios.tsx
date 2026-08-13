@@ -1,8 +1,8 @@
 "use client";
 
-import logoNequi from '../assets/logo de nequi.jpg';
-import logoAddi from '../assets/logo de Addi.jpg';
-import logoSistecredito from '../assets/logo de sistecredito.png';
+import logoNequi from '../assets/logos/logo de nequi.jpg';
+import logoAddi from '../assets/logos/logo de Addi.jpg';
+import logoSistecredito from '../assets/logos/logo de sistecredito.png';
 import Image, { type StaticImageData } from 'next/image';
 
 interface ServicioItemLogo {

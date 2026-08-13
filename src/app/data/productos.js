@@ -20,13 +20,13 @@ const foto18 = '/monturas/foto18.png';
 const foto19 = '/monturas/foto19.png';
 const foto20 = '/monturas/foto20.png';
 const foto21 = '/monturas/foto21.png';
-import gafasDeSol1 from '../assets/gafas de sol1-sin-fondo.png';
-import gafasDeSol2 from '../assets/gafas de sol2-sin-fondo.png';
-import gafasDeSol3 from '../assets/gafas de sol3-sin-fondo.png';
-import gafasDeSol4 from '../assets/gafas de sol4-sin-fondo.png';
-import gafasDeSol5 from '../assets/gafas de sol5-sin-fondo.png';
-import gafasDeSol6 from '../assets/gafas de sol6-sin-fondo.png';
-import gafasRedondas from '../assets/Gafas Redondas Negras.jpg';
+import gafasDeSol1 from '../assets/gafasDeSol/gafas de sol1-sin-fondo.png';
+import gafasDeSol2 from '../assets/gafasDeSol/gafas de sol2-sin-fondo.png';
+import gafasDeSol3 from '../assets/gafasDeSol/gafas de sol3-sin-fondo.png';
+import gafasDeSol4 from '../assets/gafasDeSol/gafas de sol4-sin-fondo.png';
+import gafasDeSol5 from '../assets/gafasDeSol/gafas de sol5-sin-fondo.png';
+import gafasDeSol6 from '../assets/gafasDeSol/gafas de sol6-sin-fondo.png';
+import gafasRedondas from '../assets/gafasDeSol/Gafas Redondas Negras.jpg';
 
 export const productosLentes = [
   {

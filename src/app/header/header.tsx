@@ -7,7 +7,7 @@ import { ShoppingCart, Heart } from "lucide-react";
 import UserProfileIcon from "../dashboard/UserProfileIcon";
 import { useCart } from "../context/CartContextType";
 import { useFavorites } from "../context/FavoritesContext";
-import logoOpticaMia from "../assets/optica-mia.jpg";
+import logoOpticaMia from "../assets//logos/optica-mia.jpeg";
 
 export default function Header() {
   const { totalItems } = useCart();
