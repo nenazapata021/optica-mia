@@ -16,9 +16,11 @@ interface ProductoJs {
   precio: number;
   imagen: string | StaticImageData;
   color: string;
+  categoria?: "mujer" | "hombre" | "ninos" | "sol";
 }
 
-function transformarProducto(productoJs: ProductoJs, categoria: "lentes" | "sol"): Producto {
+function transformarProducto(productoJs: ProductoJs): Producto {
+  const categoria: Producto["categoria"] = productoJs.categoria ?? "sol";
   return {
     id: productoJs.id,
     name: productoJs.nombre,
@@ -32,8 +34,8 @@ function transformarProducto(productoJs: ProductoJs, categoria: "lentes" | "sol"
 }
 
 const coleccionCompleta: Producto[] = [
-  ...(productosLentes as ProductoJs[]).map((p) => transformarProducto(p, "lentes")),
-  ...(productosGafasSol as ProductoJs[]).map((p) => transformarProducto(p, "sol")),
+  ...(productosLentes as ProductoJs[]).map(transformarProducto),
+  ...(productosGafasSol as ProductoJs[]).map(transformarProducto),
 ];
 
 function getImageUrl(img: Producto["image"]): string {

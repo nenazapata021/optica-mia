@@ -13,21 +13,21 @@ import type { Producto } from "./types/producto";
 
 export default function Home() {
   const productosDestacados: Producto[] = [
-    ...productosLentes.map((p) => ({
+    ...productosLentes.map((p): Producto => ({
       id: p.id,
       name: p.nombre,
       price: p.precio,
       image: p.imagen,
-      categoria: "lentes" as const,
+      categoria: p.categoria as "mujer" | "hombre" | "ninos",
       color: p.color,
       descripcion: "",
     })),
-    ...productosGafasSol.map((p) => ({
+    ...productosGafasSol.map((p): Producto => ({
       id: p.id,
       name: p.nombre,
       price: p.precio,
       image: p.imagen,
-      categoria: "sol" as const,
+      categoria: p.categoria as "sol",
       color: p.color,
       descripcion: "",
     })),

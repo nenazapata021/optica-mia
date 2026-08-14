@@ -13,11 +13,11 @@ import type {
 
 type NormalizedLandmark = { x: number; y: number; z: number };
 
-// Calibración global: ancho de la montura = FRAME_SCALE_FACTOR x distancia interpupilar.
-// Ajusta por prueba y error según el modelo de montura.
-const FRAME_SCALE_FACTOR = 2.1;
-// Anclaje vertical: 0 = centro exacto de los ojos, 1 = puente de la nariz (landmark 168).
-const NOSE_ANCHOR_WEIGHT = 0.5;
+// Factor configurable para ajustar tamaño de la montura por rostro
+// Valor ~1.75 (rango solicitado: 1.5-2x distancia interpupilar)
+export const GLASSES_SCALE_FACTOR = 1.75;
+// Peso de anclaje vertical: 0 = centro exacto de ojos, 1 = puente de nariz (landmark 168)
+export const NOSE_ANCHOR_WEIGHT = 0.5;
 
 export class MediaPipeFaceMeshEngine {
   private static instance: MediaPipeFaceMeshEngine | null = null;
@@ -143,6 +143,7 @@ export class MediaPipeFaceMeshEngine {
     glassesNaturalWidth: number,
     glassesNaturalHeight: number,
     scaleMultiplier = 1,
+    glassesScaleFactor = GLASSES_SCALE_FACTOR,
   ): OverlayConfig {
     const leftPx = {
       x: landmarks.leftEye.x * imageNaturalWidth,
@@ -157,10 +158,11 @@ export class MediaPipeFaceMeshEngine {
     const eyeDY = rightPx.y - leftPx.y;
     const eyeDistance = Math.sqrt(eyeDX * eyeDX + eyeDY * eyeDY);
 
+    // Centro entre los ojos (usando landmarks 33 e 263 - iris centers from MediaPipe)
     const centerX = (leftPx.x + rightPx.x) / 2;
 
-    // Anclaje vertical al puente de la nariz (no al centro exacto de los ojos),
-    // para que las patillas caigan naturalmente sobre las orejas.
+    // Anclaje vertical: promover hacia el puente de la nariz para mejor caída de patillas.
+    // NOSE_ANCHOR_WEIGHT = 0.5 balancea entre centro de ojos y puente nasal (landmark 168).
     const noseBridgePx = {
       x: landmarks.noseBridge.x * imageNaturalWidth,
       y: landmarks.noseBridge.y * imageNaturalHeight,
@@ -175,12 +177,14 @@ export class MediaPipeFaceMeshEngine {
       Math.abs(landmarks.jawRight.x - landmarks.jawLeft.x) *
       imageNaturalWidth;
 
-    const glassesWidth = eyeDistance * FRAME_SCALE_FACTOR * scaleMultiplier;
+    // Usar factor configurable en lugar de FRAME_SCALE_FACTOR global
+    const glassesWidth = eyeDistance * glassesScaleFactor * scaleMultiplier;
     const aspect = glassesNaturalHeight / glassesNaturalWidth;
     const glassesHeight = glassesWidth * aspect;
 
     const scale = faceWidth > 0 ? glassesWidth / faceWidth : 1;
 
+    // Rotación basada en la línea entre los ojos para seguimiento natural de cabeza
     const rotation = Math.atan2(eyeDY, eyeDX);
 
     return {

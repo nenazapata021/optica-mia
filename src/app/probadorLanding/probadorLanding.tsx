@@ -14,25 +14,26 @@ interface ProductoRaw {
   color: string;
   imagen: string | StaticImageData;
   scaleMultiplier?: number;
+  categoria: "mujer" | "hombre" | "ninos" | "sol";
 }
 
 const mapearProductos = (): Producto[] => [
-  ...productosLentes.map((p: ProductoRaw) => ({
+  ...productosLentes.map((p) => ({
     id: p.id,
     name: p.nombre,
     price: p.precio,
     image: p.imagen,
-    categoria: "lentes",
+    categoria: p.categoria as "mujer" | "hombre" | "ninos",
     color: p.color,
     descripcion: "",
     scaleMultiplier: p.scaleMultiplier,
   })),
-  ...productosGafasSol.map((p: ProductoRaw) => ({
+  ...productosGafasSol.map((p) => ({
     id: p.id,
     name: p.nombre,
     price: p.precio,
     image: p.imagen,
-    categoria: "sol",
+    categoria: p.categoria as "sol",
     color: p.color,
     descripcion: "",
   })),
@@ -46,8 +47,8 @@ export default function ProbadorLanding() {
   const todosProd = React.useMemo(() => mapearProductos(), []);
 
   const categorias = React.useMemo(
-    () => ["todos", ...Array.from(new Set(todosProd.map((p) => p.categoria)))],
-    [todosProd],
+    () => ["todos", "mujer", "hombre", "ninos", "sol"],
+    [],
   );
 
   useEffect(() => {
@@ -66,6 +67,14 @@ export default function ProbadorLanding() {
     }
     localStorage.setItem("optica-mia-filtro-categoria", categoriaSel);
   }, [categoriaSel]);
+
+  const etiquetasCategoria: Record<string, string> = {
+    todos: "Todos",
+    mujer: "Mujer",
+    hombre: "Hombre",
+    ninos: "Niños",
+    sol: "Sol",
+  };
 
   const filtrados = todosProd.filter((p) => {
     if (categoriaSel === "todos") return true;
@@ -105,7 +114,7 @@ export default function ProbadorLanding() {
                 className={getButtonClass(cat)}
                 style={getButtonStyle(cat)}
               >
-                {cat}
+                {etiquetasCategoria[cat]}
               </button>
             ))}
           </div>

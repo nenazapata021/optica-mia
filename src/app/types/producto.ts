@@ -6,7 +6,7 @@ export interface Producto {
   reference?: string;
   price: number;
   image: StaticImageData | string | Array<StaticImageData | string>;
-  categoria: string;
+  categoria: "mujer" | "hombre" | "ninos" | "sol";
   descripcion?: string;
   modelo?: string;
   color?: string;

@@ -27,12 +27,10 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-function drawThreePieceGlasses(
+function drawGlassesOverlay(
   faceImage: HTMLImageElement,
   glassesImage: HTMLImageElement,
-  leftTempleImage: HTMLImageElement,
-  rightTempleImage: HTMLImageElement,
-  overlay: OverlayConfig & { leftTempleOpacity: number; rightTempleOpacity: number },
+  overlay: OverlayConfig,
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
 ): void {
   const canvas = canvasRef.current;
@@ -41,17 +39,18 @@ function drawThreePieceGlasses(
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  canvas.width = faceImage.naturalWidth;
-  canvas.height = faceImage.naturalHeight;
+  // Limpiar canvas antes de redibujar (evita el efecto fantasma)
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Usar dimensiones del canvas (ya establecidas por el llamador o el contexto de video/imagen)
+  // No redimensionar aquí para mantener consistencia con el contenedor
 
   ctx.drawImage(faceImage, 0, 0, canvas.width, canvas.height);
 
-  const { centerX, centerY, scale, rotation, glassesWidth, glassesHeight, verticalOffset } = overlay;
-  const { leftTempleOpacity, rightTempleOpacity } = overlay;
-
-  // Dibujar frontal de la gafa (centrado sobre el puente)
+  const { centerX, centerY, rotation, glassesWidth, glassesHeight, verticalOffset } = overlay;
+  // Dibujar únicamente el frontal de la gafa (centrado sobre el puente).
   ctx.save();
-  ctx.translate(centerX, centerY + (overlay.verticalOffset || 0));
+  ctx.translate(centerX, centerY + (verticalOffset || 0));
   ctx.rotate(rotation);
 
   const isFrontalOverlay = glassesImage.src.includes("sin-fondo") || glassesImage.src.endsWith(".png");
@@ -65,47 +64,6 @@ function drawThreePieceGlasses(
     glassesHeight,
   );
   ctx.globalCompositeOperation = "source-over";
-  ctx.restore();
-
-  // Dibujar pata izquierda
-  ctx.save();
-  ctx.globalAlpha = leftTempleOpacity;
-
-  const templeLeftX = centerX - glassesWidth / 2 - 20;
-  const templeLeftY = centerY + (verticalOffset || 0) + 30;
-
-  ctx.translate(templeLeftX, templeLeftY);
-  ctx.rotate(rotation);
-
-  const templeScale = glassesWidth / 60;
-  ctx.drawImage(
-    leftTempleImage,
-    -20 * templeScale,
-    -120 * templeScale,
-    40 * templeScale,
-    240 * templeScale,
-  );
-  ctx.globalAlpha = 1;
-  ctx.restore();
-
-  // Dibujar pata derecha
-  ctx.save();
-  ctx.globalAlpha = rightTempleOpacity;
-
-  const templeRightX = centerX + glassesWidth / 2 + 20;
-  const templeRightY = centerY + (verticalOffset || 0) + 30;
-
-  ctx.translate(templeRightX, templeRightY);
-  ctx.rotate(rotation);
-
-  ctx.drawImage(
-    rightTempleImage,
-    -20 * templeScale,
-    -120 * templeScale,
-    40 * templeScale,
-    240 * templeScale,
-  );
-  ctx.globalAlpha = 1;
   ctx.restore();
 }
 
@@ -188,24 +146,7 @@ export default function VirtualTryOn({
         landmarks.imageWidth = faceImage.naturalWidth;
         landmarks.imageHeight = faceImage.naturalHeight;
 
-        // Calcular yaw usando distancias ojo-nariz
-        const faceLm = result.faceLandmarks[0];
-        const noseTip = { x: faceLm[1].x, y: faceLm[1].y };
-        const leftEyeOuter = { x: faceLm[133].x, y: faceLm[133].y };
-        const rightEyeOuter = { x: faceLm[361].x, y: faceLm[361].y };
-
-        const leftDist = Math.hypot(noseTip.x - leftEyeOuter.x, noseTip.y - leftEyeOuter.y);
-        const rightDist = Math.hypot(noseTip.x - rightEyeOuter.x, noseTip.y - rightEyeOuter.y);
-        const yawRatio = leftDist / rightDist; // >1 indica giro a la izquierda, <1 a la derecha
-
-        // Factor de reducción de opacidad
-        const opacityFactor = 0.8;
-        const templeOpacity = Math.max(0.2, 1 - Math.abs(1 - yawRatio) * opacityFactor);
-
-        // Determinar opacidad según el yaw
-        const leftTempleOpacityValue = yawRatio > 1 ? templeOpacity : 1;
-        const rightTempleOpacityValue = yawRatio < 1 ? templeOpacity : 1;
-
+        // Calcular overlay de gafas usando landmarks de MediaPipe
         const overlayConfig = engine.calculateGlassesOverlay(
           landmarks,
           faceImage.naturalWidth,
@@ -215,10 +156,15 @@ export default function VirtualTryOn({
           scaleMultiplier ?? 1,
         );
 
+        // Establecer dimensiones del canvas al tamaño natural de la cara
+        // para que llene el contenedor aspect-[4/5] correctamente
+        canvasRef.current!.width = faceImage.naturalWidth;
+        canvasRef.current!.height = faceImage.naturalHeight;
+
         setOverlay({
           ...overlayConfig,
-          leftTempleOpacity: leftTempleOpacityValue,
-          rightTempleOpacity: rightTempleOpacityValue,
+          leftTempleOpacity: 1,
+          rightTempleOpacity: 1,
         });
         setHasFace(true);
         setError(null);
@@ -232,17 +178,10 @@ export default function VirtualTryOn({
   }, [faceImage, glassesImage, scaleMultiplier, engine]);
 
   useEffect(() => {
-    if (!faceImage || !glassesImage || !leftTempleImage || !rightTempleImage) return;
+    if (!faceImage || !glassesImage) return;
     if (!overlay) return;
-    drawThreePieceGlasses(
-      faceImage,
-      glassesImage,
-      leftTempleImage!,
-      rightTempleImage!,
-      overlay,
-      canvasRef,
-    );
-  }, [faceImage, glassesImage, leftTempleImage, rightTempleImage, overlay, canvasRef]);
+    drawGlassesOverlay(faceImage, glassesImage, overlay, canvasRef);
+  }, [faceImage, glassesImage, overlay, canvasRef]);
 
   useEffect(() => {
     if (!isCameraActive || !videoRef.current || !glassesImage) return;
@@ -283,6 +222,10 @@ export default function VirtualTryOn({
 
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
+
+          // Limpiar canvas antes de redibujar cada frame
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
           ctx.drawImage(video, 0, 0);
 
           ctx.save();
@@ -293,6 +236,9 @@ export default function VirtualTryOn({
           ctx.globalCompositeOperation = isOverlay ? "source-over" : "multiply";
 
           // Dibujar frontal
+          // NOTA: se eliminó el dibujo de "patas" por separado (ver nota en
+          // drawGlassesOverlay más arriba) — causaba el efecto de montura
+          // gigante/fantasma duplicada a los lados de la cara.
           ctx.drawImage(
             glassesImage,
             -overlayConfig.glassesWidth / 2,
@@ -300,47 +246,6 @@ export default function VirtualTryOn({
             overlayConfig.glassesWidth,
             overlayConfig.glassesHeight,
           );
-
-          // Dibujar pata izquierda con opacidad
-          ctx.save();
-          ctx.globalAlpha = overlayConfig.leftTempleOpacity;
-
-          const templeLeftX = overlayConfig.centerX - overlayConfig.glassesWidth / 2 - 20;
-          const templeLeftY = overlayConfig.centerY + 30;
-
-          ctx.translate(templeLeftX, templeLeftY);
-          ctx.rotate(overlayConfig.rotation);
-
-          const templeScale = overlayConfig.glassesWidth / 60;
-          ctx.drawImage(
-            leftTempleImage!,
-            -20 * templeScale,
-            -120 * templeScale,
-            40 * templeScale,
-            240 * templeScale,
-          );
-          ctx.globalAlpha = 1;
-          ctx.restore();
-
-          // Dibujar pata derecha con opacidad
-          ctx.save();
-          ctx.globalAlpha = overlayConfig.rightTempleOpacity;
-
-          const templeRightX = overlayConfig.centerX + overlayConfig.glassesWidth / 2 + 20;
-          const templeRightY = overlayConfig.centerY + 30;
-
-          ctx.translate(templeRightX, templeRightY);
-          ctx.rotate(overlayConfig.rotation);
-
-          ctx.drawImage(
-            rightTempleImage!,
-            -20 * templeScale,
-            -120 * templeScale,
-            40 * templeScale,
-            240 * templeScale,
-          );
-          ctx.globalAlpha = 1;
-          ctx.restore();
 
           ctx.globalCompositeOperation = "source-over";
           ctx.restore();

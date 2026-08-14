@@ -1,14 +1,14 @@
 import Catalogo from "../catalogo/catalogo";
+import { type Producto } from "../types/producto";
 import { productosLentes } from "../data/productos.js";
-import type { Producto } from "../types/producto";
 
 function mapearLentes(): Producto[] {
-  return productosLentes.map((p) => ({
+  return productosLentes.map((p): Producto => ({
     id: p.id,
     name: p.nombre,
     price: p.precio,
     image: p.imagen,
-    categoria: "lentes",
+    categoria: p.categoria as "mujer" | "hombre" | "ninos",
     color: p.color,
     descripcion: "",
   }));

@@ -6,7 +6,7 @@ import type { FaceLandmarks, OverlayConfig } from "../types/tryOn";
 
 interface UseCanvasRendererReturn {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  render: (faceSrc: string, glassesSrc: string, landmarks: FaceLandmarks) => Promise<void>;
+  render: (faceSrc: string, glassesSrc: string, overlay: OverlayConfig) => Promise<void>;
   renderWithOverlay: (faceSrc: string, glassesSrc: string, overlay: OverlayConfig) => Promise<void>;
   renderFallback: (faceSrc: string, glassesSrc: string) => Promise<void>;
   drawImageFrame: (image: HTMLImageElement, glassesImg: HTMLImageElement, overlay: OverlayConfig) => void;
@@ -18,9 +18,15 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const render = useCallback(
-    async (faceSrc: string, glassesSrc: string, landmarks: FaceLandmarks): Promise<void> => {
+    async (faceSrc: string, glassesSrc: string, overlay: OverlayConfig): Promise<void> => {
       const canvas = canvasRef.current;
       if (!canvas) return;
+
+      // Limpiar canvas antes de redibujar
+      let ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
 
       const faceImg = await loadImage(faceSrc);
       const glassesImg = await loadImage(glassesSrc);
@@ -37,38 +43,25 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       canvas.width = w;
       canvas.height = h;
 
-      const ctx = canvas.getContext("2d");
+      ctx = canvas.getContext("2d");
       if (!ctx) return;
 
       ctx.drawImage(faceImg, 0, 0, w, h);
 
-      const ratio = w / faceImg.naturalWidth;
-
-      const leftEyePx = { x: landmarks.leftEye.x * ratio, y: landmarks.leftEye.y * ratio };
-      const rightEyePx = { x: landmarks.rightEye.x * ratio, y: landmarks.rightEye.y * ratio };
-
-      const centerXPx = (leftEyePx.x + rightEyePx.x) / 2;
-      const centerYPx = (leftEyePx.y + rightEyePx.y) / 2;
-      const eyeDX = rightEyePx.x - leftEyePx.x;
-      const eyeDY = rightEyePx.y - leftEyePx.y;
-      const eyeDistance = Math.sqrt(eyeDX * eyeDX + eyeDY * eyeDY);
-
-      const rotation = Math.atan2(eyeDY, eyeDX);
-
-      const glassesWidth = eyeDistance * TRY_ON_CONFIG.overlay.glassesWidthMultiplier;
-      const aspect = glassesImg.naturalHeight / glassesImg.naturalWidth;
-      const glassesHeight = glassesWidth * aspect;
-
-      const verticalShift = eyeDistance * TRY_ON_CONFIG.overlay.verticalOffsetRatio;
-
       ctx.save();
-      ctx.translate(centerXPx, centerYPx + verticalShift);
-      ctx.rotate(rotation);
+      ctx.translate(overlay.centerX, overlay.centerY);
+      ctx.rotate(overlay.rotation);
 
       const isOverlay = glassesSrc.includes("sin-fondo") || glassesSrc.endsWith(".png");
       ctx.globalCompositeOperation = isOverlay ? "source-over" : "multiply";
 
-      ctx.drawImage(glassesImg, -glassesWidth / 2, -glassesHeight / 2, glassesWidth, glassesHeight);
+      ctx.drawImage(
+        glassesImg,
+        -overlay.glassesWidth / 2,
+        -overlay.glassesHeight / 2,
+        overlay.glassesWidth,
+        overlay.glassesHeight,
+      );
       ctx.globalCompositeOperation = "source-over";
       ctx.restore();
     },
@@ -80,6 +73,12 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
+      // Limpiar canvas antes de redibujar
+      let ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
       const faceImg = await loadImage(faceSrc);
       const glassesImg = await loadImage(glassesSrc);
 
@@ -95,7 +94,7 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       canvas.width = w;
       canvas.height = h;
 
-      const ctx = canvas.getContext("2d");
+      ctx = canvas.getContext("2d");
       if (!ctx) return;
 
       ctx.drawImage(faceImg, 0, 0, w, h);
@@ -169,10 +168,16 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
+      // Limpiar canvas antes de redibujar
+      let ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
       canvas.width = image.naturalWidth;
       canvas.height = image.naturalHeight;
 
-      const ctx = canvas.getContext("2d");
+      ctx = canvas.getContext("2d");
       if (!ctx) return;
 
       ctx.drawImage(image, 0, 0);
