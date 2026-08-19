@@ -26,7 +26,7 @@ const mapearProductos = (): Producto[] => [
     categoria: p.categoria as "mujer" | "hombre" | "ninos",
     color: p.color,
     descripcion: "",
-    scaleMultiplier: p.scaleMultiplier,
+    scaleMultiplier: "scaleMultiplier" in p ? p.scaleMultiplier : undefined,
   })),
   ...productosGafasSol.map((p) => ({
     id: p.id,

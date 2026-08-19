@@ -21,9 +21,31 @@ export const TRY_ON_CONFIG = {
       176, 149, 150, 136, 172, 58, 132, 93, 234, 127,
       162, 21, 54, 103, 67, 109,
     ] as readonly number[],
+    /** Left ear / temple landmark index. */
+    earLeftIndex: 234,
+    /** Right ear / temple landmark index. */
+    earRightIndex: 454,
+    /** Nose tip landmark index (with z-depth). */
+    noseTipIndex: 1,
     glassesWidthMultiplier: 2.1,
     verticalOffsetRatio: 0,
     minIrisLandmarks: 478,
+  },
+  temple: {
+    /**
+     * Reference interpupillary distance in pixels for which the frontal
+     * glasses asset was designed. Used to compute the dynamic scale factor:
+     *   scaleRefFactor = detectedIPD / referenceIpdPx
+     */
+    referenceIpdPx: 150,
+    /** Base length of the temple arm asset in pixels (measured at 1:1). */
+    baseLengthPx: 180,
+    /** Base width of the temple arm asset in pixels. */
+    baseWidthPx: 30,
+    /** Minimum opacity for a temple arm (when fully turned away). */
+    minOpacity: 0.15,
+    /** Maximum opacity (when fully facing the viewer). */
+    maxOpacity: 0.95,
   },
   canvas: {
     maxWidth: 800,

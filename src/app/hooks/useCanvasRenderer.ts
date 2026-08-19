@@ -2,7 +2,7 @@
 
 import { useCallback, useRef } from "react";
 import { TRY_ON_CONFIG } from "../config/tryOn";
-import type { FaceLandmarks, OverlayConfig } from "../types/tryOn";
+import type { GlassesOverlayConfig, OverlayConfig, TempleArmTransform } from "../types/tryOn";
 
 interface UseCanvasRendererReturn {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -10,6 +10,13 @@ interface UseCanvasRendererReturn {
   renderWithOverlay: (faceSrc: string, glassesSrc: string, overlay: OverlayConfig) => Promise<void>;
   renderFallback: (faceSrc: string, glassesSrc: string) => Promise<void>;
   drawImageFrame: (image: HTMLImageElement, glassesImg: HTMLImageElement, overlay: OverlayConfig) => void;
+  drawGlassesWithTemples: (
+    faceImage: HTMLImageElement,
+    glassesImage: HTMLImageElement,
+    overlay: GlassesOverlayConfig,
+    leftTempleImg: HTMLImageElement | null,
+    rightTempleImg: HTMLImageElement | null,
+  ) => void;
   download: () => void;
   clear: () => void;
 }
@@ -22,7 +29,6 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      // Limpiar canvas antes de redibujar
       let ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -73,7 +79,6 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      // Limpiar canvas antes de redibujar
       let ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -168,7 +173,6 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      // Limpiar canvas antes de redibujar
       let ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -202,6 +206,122 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
     [],
   );
 
+  /**
+   * Draw a single temple arm on the canvas with 3D perspective transforms.
+   */
+  const drawTempleArm = useCallback(
+    (
+      ctx: CanvasRenderingContext2D,
+      templeImg: HTMLImageElement,
+      transform: TempleArmTransform,
+    ): void => {
+      if (transform.opacity < 0.01 || transform.length < 1) return;
+
+      ctx.save();
+      ctx.globalAlpha = transform.opacity;
+
+      // Move to the anchor point (where the arm attaches to the frame)
+      ctx.translate(transform.anchorX, transform.anchorY);
+      ctx.rotate(transform.rotation);
+
+      // Apply trapezoidal skew for perspective
+      // skewX shifts the far end horizontally, creating depth illusion
+      ctx.transform(
+        transform.scaleX,     // a: horizontal scale
+        transform.skewY,      // b: vertical skew
+        transform.skewX,      // c: horizontal skew
+        1,                    // d: vertical scale
+        0,                    // e: horizontal translation
+        0,                    // f: vertical translation
+      );
+
+      // Draw the temple arm image extending from the anchor point
+      // The arm extends to the left (negative x in local coords) from the anchor
+      // since we've rotated toward the ear direction
+      const armWidth = transform.width;
+      const armLength = transform.length;
+
+      ctx.drawImage(
+        templeImg,
+        -armWidth / 2,   // center horizontally on anchor
+        -armLength,       // extend upward (away from the frame)
+        armWidth,
+        armLength,
+      );
+
+      ctx.restore();
+    },
+    [],
+  );
+
+  /**
+   * Draw the full glasses overlay: temples (behind), frontal frame, temples (in front).
+   * The drawing order depends on head yaw to handle occlusion correctly.
+   */
+  const drawGlassesWithTemples = useCallback(
+    (
+      faceImage: HTMLImageElement,
+      glassesImage: HTMLImageElement,
+      overlay: GlassesOverlayConfig,
+      leftTempleImg: HTMLImageElement | null,
+      rightTempleImg: HTMLImageElement | null,
+    ): void => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // Clear and draw face
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(faceImage, 0, 0, canvas.width, canvas.height);
+
+      const { centerX, centerY, rotation, glassesWidth, glassesHeight, verticalOffset } = overlay;
+
+      // Determine drawing order based on yaw:
+      // If yaw > 0 (looking right), left temple is in front, right is behind
+      // If yaw < 0 (looking left), right temple is in front, left is behind
+      const leftIsInFront = overlay.headPose.yaw >= 0;
+
+      const behindTemple = leftIsInFront
+        ? { img: rightTempleImg, transform: overlay.rightTemple }
+        : { img: leftTempleImg, transform: overlay.leftTemple };
+      const inFrontTemple = leftIsInFront
+        ? { img: leftTempleImg, transform: overlay.leftTemple }
+        : { img: rightTempleImg, transform: overlay.rightTemple };
+
+      // 1. Draw temple arm that goes BEHIND the face
+      if (behindTemple.img && behindTemple.transform) {
+        drawTempleArm(ctx, behindTemple.img, behindTemple.transform);
+      }
+
+      // 2. Draw the frontal frame (bridge + lenses)
+      ctx.save();
+      ctx.translate(centerX, centerY + (verticalOffset || 0));
+      ctx.rotate(rotation);
+
+      const isFrontalOverlay =
+        glassesImage.src.includes("sin-fondo") || glassesImage.src.endsWith(".png");
+      ctx.globalCompositeOperation = isFrontalOverlay ? "source-over" : "multiply";
+
+      ctx.drawImage(
+        glassesImage,
+        -glassesWidth / 2,
+        -glassesHeight / 2,
+        glassesWidth,
+        glassesHeight,
+      );
+      ctx.globalCompositeOperation = "source-over";
+      ctx.restore();
+
+      // 3. Draw temple arm that goes IN FRONT of the face
+      if (inFrontTemple.img && inFrontTemple.transform) {
+        drawTempleArm(ctx, inFrontTemple.img, inFrontTemple.transform);
+      }
+    },
+    [drawTempleArm],
+  );
+
   const download = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -219,7 +339,16 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }, []);
 
-  return { canvasRef, render, renderWithOverlay, renderFallback, drawImageFrame, download, clear };
+  return {
+    canvasRef,
+    render,
+    renderWithOverlay,
+    renderFallback,
+    drawImageFrame,
+    drawGlassesWithTemples,
+    download,
+    clear,
+  };
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {

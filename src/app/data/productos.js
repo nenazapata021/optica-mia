@@ -35,7 +35,7 @@ export const productosLentes = [
     precio: 120000,
     color: "Plata",
     imagen: foto1,
-    categoria: "mujer"
+    categoria: "mujer",
   },
   {
     id: "foto2",
@@ -43,7 +43,7 @@ export const productosLentes = [
     precio: 120000,
     color: "Plata",
     imagen: foto2,
-    categoria: "hombre"
+    categoria: "hombre",
   },
   {
     id: "foto3",
@@ -51,7 +51,7 @@ export const productosLentes = [
     precio: 120000,
     color: "Negro",
     imagen: foto3,
-    categoria: "mujer"
+    categoria: "mujer",
   },
   {
     id: "foto4",
@@ -59,7 +59,7 @@ export const productosLentes = [
     precio: 135000,
     color: "Negro",
     imagen: foto4,
-    categoria: "hombre"
+    categoria: "hombre",
   },
   {
     id: "foto5",
@@ -67,7 +67,7 @@ export const productosLentes = [
     precio: 95000,
     color: "Azul",
     imagen: foto5,
-    categoria: "ninos"
+    categoria: "ninos",
   },
   {
     id: "foto6",
@@ -76,7 +76,7 @@ export const productosLentes = [
     color: "Carey",
     imagen: foto6,
     scaleMultiplier: 0.95,
-    categoria: "mujer"
+    categoria: "mujer",
   },
   {
     id: "foto7",
@@ -84,7 +84,7 @@ export const productosLentes = [
     precio: 140000,
     color: "Dorado",
     imagen: foto7,
-    categoria: "mujer"
+    categoria: "mujer",
   },
   {
     id: "foto8",
@@ -92,7 +92,7 @@ export const productosLentes = [
     precio: 140000,
     color: "Plateado",
     imagen: foto8,
-    categoria: "hombre"
+    categoria: "hombre",
   },
   {
     id: "foto9",
@@ -100,7 +100,7 @@ export const productosLentes = [
     precio: 130000,
     color: "Negro",
     imagen: foto9,
-    categoria: "mujer"
+    categoria: "mujer",
   },
   {
     id: "foto10",
@@ -108,7 +108,7 @@ export const productosLentes = [
     precio: 85000,
     color: "Azul",
     imagen: foto10,
-    categoria: "ninos"
+    categoria: "ninos",
   },
   {
     id: "foto11",
@@ -116,7 +116,7 @@ export const productosLentes = [
     precio: 155000,
     color: "Negro",
     imagen: foto11,
-    categoria: "hombre"
+    categoria: "hombre",
   },
   {
     id: "foto12",
@@ -124,7 +124,7 @@ export const productosLentes = [
     precio: 170000,
     color: "Grafito",
     imagen: foto12,
-    categoria: "mujer"
+    categoria: "mujer",
   },
   {
     id: "foto13",
@@ -132,7 +132,7 @@ export const productosLentes = [
     precio: 160000,
     color: "Negro",
     imagen: foto13,
-    categoria: "hombre"
+    categoria: "hombre",
   },
   {
     id: "foto14",
@@ -140,7 +140,7 @@ export const productosLentes = [
     precio: 120000,
     color: "Carey",
     imagen: foto14,
-    categoria: "mujer"
+    categoria: "mujer",
   },
   {
     id: "foto15",
@@ -149,7 +149,7 @@ export const productosLentes = [
     color: "Negro",
     imagen: foto15,
     scaleMultiplier: 1.05,
-    categoria: "hombre"
+    categoria: "hombre",
   },
   {
     id: "foto16",
@@ -157,7 +157,7 @@ export const productosLentes = [
     precio: 145000,
     color: "Rojo",
     imagen: foto16,
-    categoria: "hombre"
+    categoria: "hombre",
   },
   {
     id: "foto17",
@@ -165,7 +165,7 @@ export const productosLentes = [
     precio: 110000,
     color: "Blanco",
     imagen: foto17,
-    categoria: "mujer"
+    categoria: "mujer",
   },
   {
     id: "foto18",
@@ -173,7 +173,7 @@ export const productosLentes = [
     precio: 165000,
     color: "Miel",
     imagen: foto18,
-    categoria: "hombre"
+    categoria: "hombre",
   },
   {
     id: "foto19",
@@ -181,7 +181,7 @@ export const productosLentes = [
     precio: 150000,
     color: "Negro",
     imagen: foto19,
-    categoria: "mujer"
+    categoria: "mujer",
   },
   {
     id: "foto20",
@@ -189,7 +189,7 @@ export const productosLentes = [
     precio: 175000,
     color: "Dorado",
     imagen: foto20,
-    categoria: "hombre"
+    categoria: "hombre",
   },
   {
     id: "foto21",
@@ -197,7 +197,7 @@ export const productosLentes = [
     precio: 135000,
     color: "Negro",
     imagen: foto21,
-    categoria: "mujer"
+    categoria: "mujer",
   },
 ];
 
