@@ -89,6 +89,28 @@ model Sede {
   createdAt DateTime @default(now())
 }
 
+enum MonturaCategoria {
+  FORMULA
+  SOL
+}
+
+model Montura {
+  id              String           @id @default(cuid())
+  referencia      String           @unique
+  marca           String?
+  nombre          String
+  categoria       MonturaCategoria
+  forma           String
+  color           String
+  precio          Decimal          @db.Decimal(10, 2)
+  imagenPrincipal String
+  imagenes        String[]
+  tags            String[]
+  stock           Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
 model Motor {
   id                String   @id @default(cuid())
   productId         String   @unique

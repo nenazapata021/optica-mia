@@ -12,21 +12,21 @@ import PaymentModal from "../wompi/PaymentModal";
 const LS_CUSTOMER_KEY = "optica-mia-customer-data";
 
 const COLOR_MAP: Record<string, string> = {
-  negro: "#000000",
-  blanco: "#FFFFFF",
-  plata: "#C0C0C0",
-  azul: "#2563EB",
-  rojo: "#DC2626",
-  verde: "#16A34A",
-  marr\u00f3n: "#8B4513",
-  marron: "#8B4513",
-  carey: "#D2691E",
-  dorado: "#FFD700",
-  oro: "#FFD700",
-  transparente: "#F5F5F5",
-  gris: "#6B7280",
-  rosado: "#EC4899",
-  violeta: "#8B5CF6",
+  "vino": "#6E2A35",
+  "marr\u00f3n rosado": "#A67F72",
+  "dorado": "#D4AF37",
+  "dorado claro": "#E6C88C",
+  "rosa palo transl\u00fadecido": "#E8CFC4",
+  "rojo vino transl\u00fadecido": "#B4485A",
+  "carey/habana": "#A5673F",
+  "negro": "#1A1A1A",
+  "plateado": "#C7C9CC",
+  "azul transl\u00fadecido": "#6F8FA8",
+  "caf\u00e9": "#6B4A3A",
+  "negro mate": "#262626",
+  "gris transl\u00fadecido": "#B8B8B8",
+  "dorado rosado": "#D9A79C",
+  "negro brillante": "#0D0D0D",
 };
 
 function colorHex(nombre: string): string {

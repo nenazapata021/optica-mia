@@ -147,21 +147,21 @@ export default function AdminDashboard() {
   };
 
   const COLOR_MAP: Record<string, string> = {
-  Negro: "#1a1a1a",
-  Plata: "#C0C0C0",
-  Dorado: "#D4AF37",
-  Plateado: "#A8A9AD",
-  Cobre: "#B87333",
-  Rojo: "#C0392B",
-  Azul: "#2980B9",
-  Blanco: "#F5F5F5",
-  Miel: "#D4A017",
-  Carey: "#C4A882",
-  Transparente: "#E8E8E8",
-  Rosa: "#FFB6C1",
-  "Azul claro": "#87CEEB",
-  Grafito: "#4a4a4a",
-  Personalizado: "#888888",
+  "Vino": "#6E2A35",
+  "Marr\u00f3n rosado": "#A67F72",
+  "Dorado": "#D4AF37",
+  "Dorado claro": "#E6C88C",
+  "Rosa palo transl\u00fadecido": "#E8CFC4",
+  "Rojo vino transl\u00fadecido": "#B4485A",
+  "Carey/habana": "#A5673F",
+  "Negro": "#1A1A1A",
+  "Plateado": "#C7C9CC",
+  "Azul transl\u00fadecido": "#6F8FA8",
+  "Caf\u00e9": "#6B4A3A",
+  "Negro mate": "#262626",
+  "Gris transl\u00fadecido": "#B8B8B8",
+  "Dorado rosado": "#D9A79C",
+  "Negro brillante": "#0D0D0D",
 };
 
 function colorToHex(color: string): string {

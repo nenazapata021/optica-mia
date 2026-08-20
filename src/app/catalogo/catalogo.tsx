@@ -64,7 +64,7 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
 
   const todosLosColores = Array.from(
     new Set(
-      listaProductos.flatMap((p) => (p.color?.split("/") ?? []).map((c) => c.trim()).filter(Boolean))
+      listaProductos.flatMap((p) => (p.color ?? "").trim()).filter(Boolean)
     )
   );
 
