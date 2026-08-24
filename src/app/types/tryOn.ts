@@ -87,3 +87,21 @@ export interface GlassesOverlayConfig extends OverlayConfig {
 export type RunningMode = "IMAGE" | "VIDEO";
 
 export type ModalStep = "options" | "camera" | "detecting" | "result";
+
+/** Estados del probador en vivo con webcam. */
+export type TryOnLiveStatus =
+  | "idle"
+  | "loading-model"
+  | "starting-camera"
+  | "running"
+  | "error";
+
+/** Suavizado exponencial de la pose de la montura en vivo. */
+export interface SmoothedFramePose {
+  x: number;
+  y: number;
+  widthPx: number;
+  rollDeg: number;
+  yawDeg: number;
+  pitchDeg: number;
+}

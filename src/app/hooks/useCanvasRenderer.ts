@@ -290,8 +290,12 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
         ? { img: leftTempleImg, transform: overlay.leftTemple }
         : { img: rightTempleImg, transform: overlay.rightTemple };
 
+      // Guarda anti-duplicado: nunca dibujar el PNG frontal como pata.
+      const isUsableTemple = (templeImg: HTMLImageElement | null): boolean =>
+        !!templeImg && templeImg.src !== glassesImage.src;
+
       // 1. Draw temple arm that goes BEHIND the face
-      if (behindTemple.img && behindTemple.transform) {
+      if (behindTemple.img && behindTemple.transform && isUsableTemple(behindTemple.img)) {
         drawTempleArm(ctx, behindTemple.img, behindTemple.transform);
       }
 
@@ -315,7 +319,7 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       ctx.restore();
 
       // 3. Draw temple arm that goes IN FRONT of the face
-      if (inFrontTemple.img && inFrontTemple.transform) {
+      if (inFrontTemple.img && inFrontTemple.transform && isUsableTemple(inFrontTemple.img)) {
         drawTempleArm(ctx, inFrontTemple.img, inFrontTemple.transform);
       }
     },

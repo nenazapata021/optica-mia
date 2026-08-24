@@ -1,14 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { type Producto } from "../types/producto";
 import ProductInfo from "../producto info/ProductInfo";
 import Carousel from "../carousel/carousel";
-import { useRealisticTryOn } from "../hooks/useRealisticTryOn";
-import { ArrowLeft, Download, Glasses, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowLeft, Glasses } from "lucide-react";
 
 const VirtualTryOn = dynamic(() => import("../components/VirtualTryOn"), { ssr: false });
 
@@ -20,8 +19,6 @@ interface DatosSimulacion {
 export default function SimulacionVirtual() {
   const [datos, setDatos] = useState<DatosSimulacion | null>(null);
   const [cargandoDatos, setCargandoDatos] = useState(true);
-  const { estado, imagenResultado, error, generar, descargar } = useRealisticTryOn();
-  const resultadoRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     try {
@@ -35,12 +32,6 @@ export default function SimulacionVirtual() {
     }
     setCargandoDatos(false);
   }, []);
-
-  useEffect(() => {
-    if (estado === "listo") {
-      resultadoRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-  }, [estado]);
 
   if (cargandoDatos) {
     return (
@@ -121,79 +112,6 @@ export default function SimulacionVirtual() {
               <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-400">
                 <div className="h-1.5 w-1.5 rounded-full bg-green-400" />
                 El motor detecta tu rostro y superpone la montura sobre tus ojos
-              </div>
-
-              {/* Generación fotorrealista con IA (Gemini Image) */}
-              <div
-                ref={resultadoRef}
-                className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#008294]/10">
-                    <Sparkles size={18} className="text-[#008294]" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-800">
-                      Foto realista con IA
-                    </h3>
-                    <p className="mt-0.5 text-xs text-slate-400">
-                      Genera una fotograf&iacute;a fotorrealista de ti usando esta montura.
-                      Puede tardar unos segundos.
-                    </p>
-                  </div>
-                </div>
-
-                {estado === "listo" && imagenResultado ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={imagenResultado}
-                      alt={`Foto realista usando ${datos.producto.name}`}
-                      className="mt-4 w-full rounded-xl border border-slate-100"
-                    />
-                    <div className="mt-4 flex flex-wrap justify-center gap-3">
-                      <button
-                        onClick={() => generar(datos.fotoUrl, imagenProducto)}
-                        className="flex items-center gap-2 rounded-xl bg-white/90 px-5 py-2.5 text-sm font-semibold text-slate-700 shadow transition hover:bg-white"
-                      >
-                        <RefreshCw size={16} />
-                        Regenerar
-                      </button>
-                      <button
-                        onClick={descargar}
-                        className="flex items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b]"
-                      >
-                        <Download size={18} />
-                        Descargar foto
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => generar(datos.fotoUrl, imagenProducto)}
-                      disabled={estado === "generando"}
-                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#008294] px-5 py-3 text-sm font-semibold text-white shadow transition hover:bg-[#005f6b] disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      {estado === "generando" ? (
-                        <>
-                          <Loader2 size={18} className="animate-spin" />
-                          Generando foto realista... esto puede tardar hasta 15 segundos
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={18} />
-                          Generar foto realista
-                        </>
-                      )}
-                    </button>
-                    {error && (
-                      <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
-                        {error}
-                      </p>
-                    )}
-                  </>
-                )}
               </div>
             </div>
           </div>

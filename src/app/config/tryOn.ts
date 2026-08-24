@@ -47,6 +47,46 @@ export const TRY_ON_CONFIG = {
     /** Maximum opacity (when fully facing the viewer). */
     maxOpacity: 0.95,
   },
+  liveEngine: {
+    /** Vista espejada estilo selfie (el video se muestra con scaleX(-1)). */
+    mirrorPreview: true,
+    /** Pómulo/sien izquierdo — usado para el roll. */
+    cheekLeftIndex: 127,
+    /** Pómulo/sien derecho — usado para el roll. */
+    cheekRightIndex: 356,
+    /** Punto entre cejas (anclaje vertical superior). */
+    glabellaIndex: 6,
+    /** Puente nasal (anclaje vertical). */
+    noseBridgeIndex: 168,
+    /** Punta de la nariz (yaw/pitch). */
+    noseTipIndex: 1,
+    /** Base de la nariz (yaw/pitch). */
+    noseBaseIndex: 4,
+    /** Puente nasal inferior (yaw/pitch). */
+    noseBridgeLowerIndex: 5,
+  },
+  smoothing: {
+    positionAlpha: 0.35,
+    angleAlpha: 0.22,
+    scaleAlpha: 0.3,
+    deadZonePx: 0.8,
+  },
+  clamps: {
+    maxYawDeg: 25,
+    maxPitchDeg: 15,
+  },
+  perspectivePx: 900,
+  /** IPD promedio adulto en mm, base de calibración. */
+  referenceIpdMm: 63,
+  /**
+   * Escala base de montura: ancho_total_montura_px / IPD_px_referencia.
+   * Equivalente a ancho_frontal_mm ≈ 136 / 63 mm.
+   */
+  baseFrameScale: 2.16,
+  /** Con delegate CPU procesar 1 de cada N frames. */
+  cpuThrottleDivisor: 2,
+  /** Gracia antes de mostrar "rostro no detectado" en vivo. */
+  faceLostGraceMs: 800,
   canvas: {
     maxWidth: 800,
   },
@@ -66,5 +106,9 @@ export const TRY_ON_CONFIG = {
     detectionError: "Ocurrió un error al procesar la imagen. Intenta con otra foto.",
     uploadError: "La imagen no es válida. Usa JPG, PNG o WEBP (máx 10 MB).",
     imageNotReady: "La imagen aún no está lista para analizarse. Intenta nuevamente.",
+    cameraDenied: "No autorizaste el acceso a la cámara. Habilítala en los permisos del navegador e inténtalo de nuevo.",
+    cameraNotFound: "No encontramos una cámara conectada a tu dispositivo.",
+    modelErrorLive: "No se pudo cargar el motor de detección facial. Verifica tu conexión e inténtalo de nuevo.",
+    noFaceLive: "No detectamos tu rostro. Ubícate de frente a la cámara con buena iluminación.",
   },
 } as const;

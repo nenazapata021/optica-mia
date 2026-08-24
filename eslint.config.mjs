@@ -24,6 +24,7 @@ const eslintConfig = defineConfig([
     ".openspec/**",
     "node_modules/**",
     "src/generated/**",
+    "public/mediapipe/**",
     "*.config.mjs",
   ]),
 ]);
