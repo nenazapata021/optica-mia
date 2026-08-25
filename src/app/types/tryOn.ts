@@ -13,6 +13,10 @@ export interface FaceLandmarks {
   leftEye: Point3D;
   /** Right eye center (with z-depth from iris or contour). */
   rightEye: Point3D;
+  /** Left eye inner corner (landmark 133). */
+  leftEyeInnerCorner: Point3D;
+  /** Right eye inner corner (landmark 362). */
+  rightEyeInnerCorner: Point3D;
   noseBridge: Point;
   noseTip: Point;
   jawLeft: Point;

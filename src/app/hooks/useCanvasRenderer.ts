@@ -3,6 +3,7 @@
 import { useCallback, useRef } from "react";
 import { TRY_ON_CONFIG } from "../config/tryOn";
 import type { GlassesOverlayConfig, OverlayConfig, TempleArmTransform } from "../types/tryOn";
+import type { FaceLandmarks } from "../types/tryOn";
 
 interface UseCanvasRendererReturn {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -17,7 +18,14 @@ interface UseCanvasRendererReturn {
     leftTempleImg: HTMLImageElement | null,
     rightTempleImg: HTMLImageElement | null,
   ) => void;
-  download: () => void;
+  download: (
+    faceImage: HTMLImageElement,
+    glassesImage: HTMLImageElement,
+    overlay: GlassesOverlayConfig,
+    leftTempleImg: HTMLImageElement | null,
+    rightTempleImg: HTMLImageElement | null,
+    landmarks: FaceLandmarks,
+  ) => Promise<void>;
   clear: () => void;
 }
 
@@ -326,14 +334,159 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
     [drawTempleArm],
   );
 
-  const download = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const link = document.createElement("a");
-    link.download = "simulacion-optica-mia.jpg";
-    link.href = canvas.toDataURL("image/jpeg", 0.92);
-    link.click();
-  }, []);
+  const download = useCallback(
+    async (
+      faceImage: HTMLImageElement,
+      glassesImage: HTMLImageElement,
+      overlay: GlassesOverlayConfig,
+      leftTempleImg: HTMLImageElement | null,
+      rightTempleImg: HTMLImageElement | null,
+      landmarks: FaceLandmarks,
+    ): Promise<void> => {
+      const outputSize = 1024;
+      const marginRatio = 0.18;
+
+      // Calculate face bounding box from faceOval landmarks (normalized 0-1)
+      const faceOval = landmarks.faceOval;
+      if (!faceOval || faceOval.length === 0) return;
+
+      let minX = 1,
+        maxX = 0,
+        minY = 1,
+        maxY = 0;
+      for (const pt of faceOval) {
+        if (pt.x < minX) minX = pt.x;
+        if (pt.x > maxX) maxX = pt.x;
+        if (pt.y < minY) minY = pt.y;
+        if (pt.y > maxY) maxY = pt.y;
+      }
+
+      const faceWidthNorm = maxX - minX;
+      const faceHeightNorm = maxY - minY;
+      const faceCenterXNorm = (minX + maxX) / 2;
+      const faceCenterYNorm = (minY + maxY) / 2;
+
+      // Add margin around face
+      const cropWidthNorm = faceWidthNorm * (1 + 2 * marginRatio);
+      const cropHeightNorm = faceHeightNorm * (1 + 2 * marginRatio);
+
+      // Use the larger dimension to keep square aspect, centered on face center
+      const cropSizeNorm = Math.max(cropWidthNorm, cropHeightNorm);
+
+      // Calculate crop rectangle in normalized coordinates (0-1)
+      let cropLeft = faceCenterXNorm - cropSizeNorm / 2;
+      let cropTop = faceCenterYNorm - cropSizeNorm / 2;
+
+      // Clamp to image bounds
+      if (cropLeft < 0) cropLeft = 0;
+      if (cropTop < 0) cropTop = 0;
+      if (cropLeft + cropSizeNorm > 1) cropLeft = 1 - cropSizeNorm;
+      if (cropTop + cropSizeNorm > 1) cropTop = 1 - cropSizeNorm;
+
+      // Convert to pixel coordinates on source image
+      const srcW = faceImage.naturalWidth;
+      const srcH = faceImage.naturalHeight;
+      const sx = Math.round(cropLeft * srcW);
+      const sy = Math.round(cropTop * srcH);
+      const sWidth = Math.round(cropSizeNorm * srcW);
+      const sHeight = Math.round(cropSizeNorm * srcH);
+
+      // Create output canvas 1024x1024
+      const outCanvas = document.createElement("canvas");
+      outCanvas.width = outputSize;
+      outCanvas.height = outputSize;
+      const octx = outCanvas.getContext("2d");
+      if (!octx) return;
+
+      // Draw face: crop from source to fill output canvas
+      octx.drawImage(faceImage, sx, sy, sWidth, sHeight, 0, 0, outputSize, outputSize);
+
+      // Now draw glasses and temples on top, scaled to output coordinates
+      const scaleX = outputSize / sWidth;
+      const scaleY = outputSize / sHeight;
+
+      // Map overlay center to output canvas
+      const centerX = (overlay.centerX - sx) * scaleX;
+      const centerY = (overlay.centerY - sy) * scaleY + (overlay.verticalOffset || 0) * scaleY;
+      const glassesWidth = overlay.glassesWidth * scaleX;
+      const glassesHeight = overlay.glassesHeight * scaleY;
+      const rotation = overlay.rotation;
+
+      // Draw temples first (behind/front based on yaw)
+      const leftIsInFront = overlay.headPose.yaw >= 0;
+
+      const behindTemple = leftIsInFront
+        ? { img: rightTempleImg, transform: overlay.rightTemple }
+        : { img: leftTempleImg, transform: overlay.leftTemple };
+      const inFrontTemple = leftIsInFront
+        ? { img: leftTempleImg, transform: overlay.leftTemple }
+        : { img: rightTempleImg, transform: overlay.rightTemple };
+
+      const isUsableTemple = (templeImg: HTMLImageElement | null): boolean =>
+        !!templeImg && templeImg.src !== glassesImage.src;
+
+      const drawTempleOnCanvas = (
+        ctx: CanvasRenderingContext2D,
+        templeImg: HTMLImageElement,
+        transform: TempleArmTransform,
+      ): void => {
+        if (transform.opacity < 0.01 || transform.length < 1) return;
+
+        ctx.save();
+        ctx.globalAlpha = transform.opacity;
+
+        // Map anchor to output canvas
+        const anchorX = (transform.anchorX - sx) * scaleX;
+        const anchorY = (transform.anchorY - sy) * scaleY;
+        const length = transform.length * scaleX;
+        const width = transform.width * scaleX;
+
+        ctx.translate(anchorX, anchorY);
+        ctx.rotate(transform.rotation);
+
+        ctx.transform(transform.scaleX, transform.skewY, transform.skewX, 1, 0, 0);
+
+        ctx.drawImage(templeImg, -width / 2, -length, width, length);
+        ctx.restore();
+      };
+
+      // 1. Behind temple
+      if (behindTemple.img && behindTemple.transform && isUsableTemple(behindTemple.img)) {
+        drawTempleOnCanvas(octx, behindTemple.img, behindTemple.transform);
+      }
+
+      // 2. Frontal frame
+      octx.save();
+      octx.translate(centerX, centerY);
+      octx.rotate(rotation);
+
+      const isFrontalOverlay =
+        glassesImage.src.includes("sin-fondo") || glassesImage.src.endsWith(".png");
+      octx.globalCompositeOperation = isFrontalOverlay ? "source-over" : "multiply";
+
+      octx.drawImage(
+        glassesImage,
+        -glassesWidth / 2,
+        -glassesHeight / 2,
+        glassesWidth,
+        glassesHeight,
+      );
+      octx.globalCompositeOperation = "source-over";
+      octx.restore();
+
+      // 3. Front temple
+      if (inFrontTemple.img && inFrontTemple.transform && isUsableTemple(inFrontTemple.img)) {
+        drawTempleOnCanvas(octx, inFrontTemple.img, inFrontTemple.transform);
+      }
+
+      // Download
+      const link = document.createElement("a");
+      link.download = "simulacion-optica-mia-1024.jpg";
+      link.href = outCanvas.toDataURL("image/jpeg", 0.92);
+      link.click();
+    },
+    [],
+  );
 
   const clear = useCallback(() => {
     const canvas = canvasRef.current;

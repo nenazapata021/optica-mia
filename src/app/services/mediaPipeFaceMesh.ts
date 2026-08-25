@@ -16,8 +16,8 @@ import type {
 
 type NormalizedLandmark = { x: number; y: number; z: number };
 
-export const GLASSES_SCALE_FACTOR = 1.75;
-export const NOSE_ANCHOR_WEIGHT = 0.5;
+export const GLASSES_SCALE_FACTOR = 1.10;
+export const NOSE_ANCHOR_WEIGHT = 0.18;
 
 export class MediaPipeFaceMeshEngine {
   private static instance: MediaPipeFaceMeshEngine | null = null;
@@ -116,6 +116,18 @@ export class MediaPipeFaceMeshEngine {
       : this.toPoint3D(this.computeCentroid(rightEyeContour), this.avgZ(lm, cfg.rightEyeIndices));
     const noseBridge = this.computeAveragePoint(lm, cfg.noseBridgeIndices);
 
+    // Inner eye corners (landmarks 133 and 362) for bridge center
+    const leftEyeInnerCorner: Point3D = {
+      x: lm[cfg.innerEyeCornerIndices.left].x,
+      y: lm[cfg.innerEyeCornerIndices.left].y,
+      z: lm[cfg.innerEyeCornerIndices.left].z,
+    };
+    const rightEyeInnerCorner: Point3D = {
+      x: lm[cfg.innerEyeCornerIndices.right].x,
+      y: lm[cfg.innerEyeCornerIndices.right].y,
+      z: lm[cfg.innerEyeCornerIndices.right].z,
+    };
+
     // Ear landmarks with 3D depth from MediaPipe z-coordinate
     const earLeft: Point3D = {
       x: lm[cfg.earLeftIndex].x,
@@ -136,6 +148,8 @@ export class MediaPipeFaceMeshEngine {
     return {
       leftEye,
       rightEye,
+      leftEyeInnerCorner,
+      rightEyeInnerCorner,
       noseBridge,
       noseTip: { x: noseTip3D.x, y: noseTip3D.y },
       jawLeft: { x: lm[172].x, y: lm[172].y },
@@ -257,8 +271,49 @@ export class MediaPipeFaceMeshEngine {
     glassesNaturalWidth: number,
     glassesNaturalHeight: number,
     scaleMultiplier = 1,
-    glassesScaleFactor = GLASSES_SCALE_FACTOR,
+    _glassesScaleFactor = GLASSES_SCALE_FACTOR, // unused, kept for signature compatibility
   ): GlassesOverlayConfig {
+    // Temple-to-temple distance (landmarks 234 and 454) — full face width
+    const earLeftPx = {
+      x: landmarks.earLeft.x * imageNaturalWidth,
+      y: landmarks.earLeft.y * imageNaturalHeight,
+    };
+    const earRightPx = {
+      x: landmarks.earRight.x * imageNaturalWidth,
+      y: landmarks.earRight.y * imageNaturalHeight,
+    };
+    const templeDX = earRightPx.x - earLeftPx.x;
+    const templeDY = earRightPx.y - earLeftPx.y;
+    const templeToTempleDist = Math.sqrt(templeDX * templeDX + templeDY * templeDY);
+
+    // Bridge center X from inner eye corners (landmarks 133 and 362)
+    const innerLeftPx = {
+      x: landmarks.leftEyeInnerCorner.x * imageNaturalWidth,
+      y: landmarks.leftEyeInnerCorner.y * imageNaturalHeight,
+    };
+    const innerRightPx = {
+      x: landmarks.rightEyeInnerCorner.x * imageNaturalWidth,
+      y: landmarks.rightEyeInnerCorner.y * imageNaturalHeight,
+    };
+    const centerX = (innerLeftPx.x + innerRightPx.x) / 2;
+
+    // Glasses width = temple-to-temple * margin factor * scaleMultiplier
+    const templeCfg = TRY_ON_CONFIG.temple;
+    const glassesWidth = templeToTempleDist * templeCfg.templeMarginFactor * scaleMultiplier;
+    const aspect = glassesNaturalHeight / glassesNaturalWidth;
+    const glassesHeight = glassesWidth * aspect;
+
+    // Center Y: blend between inner eye corners midpoint and nose bridge
+    const innerEyeMidY = (innerLeftPx.y + innerRightPx.y) / 2;
+    const noseBridgePx = {
+      x: landmarks.noseBridge.x * imageNaturalWidth,
+      y: landmarks.noseBridge.y * imageNaturalHeight,
+    };
+    const centerY = innerEyeMidY * 0.7 + noseBridgePx.y * 0.3;
+
+    const verticalOffset = 0;
+
+    // Eye distance for rotation and scale reference
     const leftPx = {
       x: landmarks.leftEye.x * imageNaturalWidth,
       y: landmarks.leftEye.y * imageNaturalHeight,
@@ -267,37 +322,18 @@ export class MediaPipeFaceMeshEngine {
       x: landmarks.rightEye.x * imageNaturalWidth,
       y: landmarks.rightEye.y * imageNaturalHeight,
     };
-
     const eyeDX = rightPx.x - leftPx.x;
     const eyeDY = rightPx.y - leftPx.y;
     const eyeDistance = Math.sqrt(eyeDX * eyeDX + eyeDY * eyeDY);
-
-    const centerX = (leftPx.x + rightPx.x) / 2;
-
-    const noseBridgePx = {
-      x: landmarks.noseBridge.x * imageNaturalWidth,
-      y: landmarks.noseBridge.y * imageNaturalHeight,
-    };
-    const eyeMidY = (leftPx.y + rightPx.y) / 2;
-    const centerY =
-      eyeMidY * (1 - NOSE_ANCHOR_WEIGHT) + noseBridgePx.y * NOSE_ANCHOR_WEIGHT;
-
-    const verticalOffset = 0;
 
     const faceWidth =
       Math.abs(landmarks.jawRight.x - landmarks.jawLeft.x) *
       imageNaturalWidth;
 
-    const glassesWidth = eyeDistance * glassesScaleFactor * scaleMultiplier;
-    const aspect = glassesNaturalHeight / glassesNaturalWidth;
-    const glassesHeight = glassesWidth * aspect;
-
     const scale = faceWidth > 0 ? glassesWidth / faceWidth : 1;
-
     const rotation = Math.atan2(eyeDY, eyeDX);
 
     // Dynamic scale reference factor
-    const templeCfg = TRY_ON_CONFIG.temple;
     const scaleRefFactor = templeCfg.referenceIpdPx > 0
       ? eyeDistance / templeCfg.referenceIpdPx
       : 1;

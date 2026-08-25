@@ -16,6 +16,7 @@ import { useFaceTryOn } from "../hooks/useFaceTryOn";
 import { MediaPipeFaceMeshEngine } from "../services/mediaPipeFaceMesh";
 import { TRY_ON_CONFIG } from "../config/tryOn";
 import type { GlassesOverlayConfig } from "../types/tryOn";
+import type { FaceLandmarks } from "../types/tryOn";
 import type { Producto } from "../types/producto";
 
 interface VirtualTryOnProps {
@@ -149,6 +150,7 @@ export default function VirtualTryOn({
   const [leftTempleImage, setLeftTempleImage] = useState<HTMLImageElement | null>(null);
   const [rightTempleImage, setRightTempleImage] = useState<HTMLImageElement | null>(null);
   const [overlay, setOverlay] = useState<GlassesOverlayConfig | null>(null);
+  const [landmarks, setLandmarks] = useState<FaceLandmarks | null>(null);
   const [staticError, setStaticError] = useState<string | null>(null);
   const [hasFace, setHasFace] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(false);
@@ -217,17 +219,17 @@ export default function VirtualTryOn({
         const result = engine.detectImage(faceImage);
         if (!result) return;
 
-        const landmarks = engine.extractPreciseLandmarks(result);
-        if (!landmarks) {
+        const detectedLandmarks = engine.extractPreciseLandmarks(result);
+        if (!detectedLandmarks) {
           setStaticError(TRY_ON_CONFIG.messages.noFace);
           return;
         }
 
-        landmarks.imageWidth = faceImage.naturalWidth;
-        landmarks.imageHeight = faceImage.naturalHeight;
+        detectedLandmarks.imageWidth = faceImage.naturalWidth;
+        detectedLandmarks.imageHeight = faceImage.naturalHeight;
 
         const overlayConfig = engine.calculateGlassesOverlay(
-          landmarks,
+          detectedLandmarks,
           faceImage.naturalWidth,
           faceImage.naturalHeight,
           glassesImage.naturalWidth,
@@ -241,6 +243,7 @@ export default function VirtualTryOn({
         }
 
         setOverlay(overlayConfig);
+        setLandmarks(detectedLandmarks);
         setHasFace(true);
         setStaticError(null);
       } catch {
@@ -475,14 +478,23 @@ export default function VirtualTryOn({
             </div>
           )}
 
-          {hasFace && faceImage && (
+          {hasFace && faceImage && overlay && landmarks && (
             <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 flex-wrap justify-center gap-3">
               <button
-                onClick={() => download()}
+                onClick={() =>
+                  download(
+                    faceImage,
+                    glassesImage!,
+                    overlay,
+                    leftTempleImage,
+                    rightTempleImage,
+                    landmarks,
+                  )
+                }
                 className="flex items-center gap-2 rounded-xl bg-[#008294] px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-[#005f6b]"
               >
                 <Download size={18} />
-                Descargar resultado
+                Descargar resultado (1024×1024)
               </button>
             </div>
           )}

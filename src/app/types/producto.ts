@@ -6,11 +6,15 @@ export interface Producto {
   reference?: string;
   price: number;
   image: StaticImageData | string | Array<StaticImageData | string>;
+  images?: (StaticImageData | string)[];
   categoria: "mujer" | "hombre" | "ninos" | "sol";
   descripcion?: string;
   modelo?: string;
   color?: string;
   imagenMontura?: StaticImageData | string;
+  tags?: string[];
+  material?: string;
+  warranty?: string;
   /** Ajuste fino de tamaño de la montura en el probador (multiplicador sobre FRAME_SCALE_FACTOR). */
   scaleMultiplier?: number;
 }

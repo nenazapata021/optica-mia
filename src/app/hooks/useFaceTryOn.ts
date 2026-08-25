@@ -233,22 +233,15 @@ export function useFaceTryOn(
       rIx /= 5;
       rIy /= 5;
 
-      const leftIrisPx = { x: toPxX(lIx), y: toPxY(lIy) };
-      const rightIrisPx = { x: toPxX(rIx), y: toPxY(rIy) };
+      // Ancla base: punto medio esquinas internas ojos (133, 362)
+      const innerLeftPx = { x: toPxX(landmarks[133].x), y: toPxY(landmarks[133].y) };
+      const innerRightPx = { x: toPxX(landmarks[362].x), y: toPxY(landmarks[362].y) };
+      const anchorXRaw = (innerLeftPx.x + innerRightPx.x) / 2;
 
-      // Ancla base: punto medio entre ambos ojos
-      const anchorXRaw = (leftIrisPx.x + rightIrisPx.x) / 2;
-
-      // IPD en px reales → define el escalado
-      const ipdPx = Math.hypot(
-        rightIrisPx.x - leftIrisPx.x,
-        rightIrisPx.y - leftIrisPx.y,
-      );
-
-      // Anclaje vertical: mezcla entrecejo (6) ↔ puente nasal (168)
-      const glabellaY = toPxY(landmarks[cfg.glabellaIndex].y);
-      const noseBridgeY = toPxY(landmarks[cfg.noseBridgeIndex].y);
-      const anchorY = (glabellaY + noseBridgeY) / 2;
+      // Anclaje vertical: punto medio esquinas internas ojos (133, 362)
+      const innerLeftY = toPxY(landmarks[133].y);
+      const innerRightY = toPxY(landmarks[362].y);
+      const anchorY = (innerLeftY + innerRightY) / 2;
 
       // --- Roll: ángulo entre pómulos/sienes (127, 356) ---
       const cheekL = landmarks[cfg.cheekLeftIndex];
@@ -304,10 +297,21 @@ export function useFaceTryOn(
         yawDeg = -yawDeg;
       }
 
-      // --- Escala objetivo: IPD_px × constante calibrada × multiplicador ---
+      // --- Escala objetivo: temple-to-temple × margin factor × multiplicador ---
       const multiplier = optionsRef.current?.scaleMultiplier ?? 1;
-      const targetWidthPx =
-        ipdPx * TRY_ON_CONFIG.baseFrameScale * multiplier;
+      const templeMarginFactor = TRY_ON_CONFIG.temple.templeMarginFactor;
+
+      // Temple landmarks: 234 (left), 454 (right)
+      const earLeft = landmarks[234];
+      const earRight = landmarks[454];
+      const earLeftPx = { x: toPxX(earLeft.x), y: toPxY(earLeft.y) };
+      const earRightPx = { x: toPxX(earRight.x), y: toPxY(earRight.y) };
+      const templeToTempleDist = Math.hypot(
+        earRightPx.x - earLeftPx.x,
+        earRightPx.y - earLeftPx.y,
+      );
+
+      const targetWidthPx = templeToTempleDist * templeMarginFactor * multiplier;
 
       // --- Suavizado exponencial (lerp) + zona muerta anti-jitter ---
       const prev = smoothedRef.current;
