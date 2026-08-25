@@ -1,4 +1,4 @@
-# Óptica Mía - E-commerce con Probador Virtual
+# Óptica Mía - E-commerce con Probador Virtual.
 
 Este es un proyecto de E-commerce desarrollado con Next.js para "Óptica Mía". La aplicación permite a los usuarios explorar un catálogo de monturas, agregarlas a un carrito de compras y utilizar un innovador probador virtual para ver cómo les quedan las gafas usando la cámara de su dispositivo.
 
@@ -7,7 +7,7 @@ Este es un proyecto de E-commerce desarrollado con Next.js para "Óptica Mía". 
 *   **Catálogo de Productos:** Explora diferentes categorías de monturas (mujer, hombre, niños, sol).
 *   **Probador Virtual:** Utiliza la cámara del dispositivo o sube una foto para simular cómo se ven las monturas en el rostro del usuario.
 *   **Carrito de Compras:** Funcionalidad completa para agregar, eliminar y modificar la cantidad de productos en el carrito, gestionado con React Context.
-*   **Diseño Responsivo:** Interfaz moderna y adaptable a diferentes tamaños de pantalla gracias a Tailwind CSS.
+*   **Diseño Responsivo:** Interfaz moderna y adaptable a diferentes tamaños de pantalla gracias a Tailwind CSS y react.
 *   **Enrutamiento Moderno:** Construido sobre el App Router de Next.js para una navegación rápida y optimizada.
 
 ## Tech Stack
@@ -51,6 +51,8 @@ To learn more about Next.js, take a look at the following resources:
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+nenazapata 
 
 ## Deploy on Vercel
 

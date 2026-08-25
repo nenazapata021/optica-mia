@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-optica}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-optica}
+      POSTGRES_DB: ${POSTGRES_DB:-optica_mia}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-optica} -d ${POSTGRES_DB:-optica_mia}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://optica:optica@postgres:5432/optica_mia?schema=public}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-optica}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-optica}
+      POSTGRES_DB: ${POSTGRES_DB:-optica_mia}
+      RUN_SEED: ${RUN_SEED:-false}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@optica-mia.com}
+      NODE_ENV: production
+      WOMPI_API_URL: ${WOMPI_API_URL:-https://sandbox.wompi.co/v1}
+      WOMPI_PUBLIC_KEY: ${WOMPI_PUBLIC_KEY:-}
+      WOMPI_PRIVATE_KEY: ${WOMPI_PRIVATE_KEY:-}
+      WOMPI_INTEGRITY_KEY: ${WOMPI_INTEGRITY_KEY:-}
+      WOMPI_EVENT_SECRET: ${WOMPI_EVENT_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

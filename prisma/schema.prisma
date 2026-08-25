@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  previewFeatures = []
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  price       Float
+  image       String
+  categoria   String
+  descripcion String  @default("")
+  color       String?
+  modelo      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderItems OrderItem[]
+  favorites  Favorite[]
+  motor      Motor?
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  nombre    String
+  email     String   @unique
+  telefono  String
+  direccion String
+  hasCompletedOnboarding Boolean @default(false)
+  createdAt              DateTime @default(now())
+
+  orders    Order[]
+  favorites Favorite[]
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  customerId      String
+  customer        Customer    @relation(fields: [customerId], references: [id])
+  total           Float
+  status          String      @default("pendiente")
+  paymentMethod   String?
+  transactionId   String?     @unique
+  wompiStatus     String?
+  createdAt       DateTime    @default(now())
+
+  items OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, productId])
+  @@index([customerId])
+  @@index([productId])
+}
+
+model Sede {
+  id        String   @id @default(cuid())
+  nombre    String
+  direccion String
+  lat       Float
+  lng       Float
+  horario   String   @default("Lunes a Sábados 8:00 - 18:00")
+  telefono  String?
+  createdAt DateTime @default(now())
+}
+
+enum MonturaCategoria {
+  FORMULA
+  SOL
+}
+
+model Montura {
+  id              String           @id @default(cuid())
+  referencia      String           @unique
+  marca           String?
+  nombre          String
+  categoria       MonturaCategoria
+  forma           String
+  color           String
+  precio          Decimal          @db.Decimal(10, 2)
+  imagenPrincipal String
+  imagenes        String[]
+  tags            String[]
+  stock           Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model Motor {
+  id                String   @id @default(cuid())
+  productId         String   @unique
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Catálogo
+  marca             String?
+  forma             String   @default("Redonda")
+  tags              String[]
+  badge             String?
+
+  // Imágenes
+  imagenCatalogoUrl String
+  imagenOverlayUrl  String
+
+  // Calibración Probador Virtual
+  anchoRealMm       Float
+  anchoImagenPx     Int
+  offsetXPx         Float    @default(0)
+  offsetYPx         Float    @default(0)
+  anguloBaseGrados  Float    @default(0)
+
+  // Estado
+  activo            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
