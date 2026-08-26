@@ -41,12 +41,39 @@ async function main() {
   for (const product of products) {
     await prisma.product.upsert({
       where: { id: product.id },
-      update: product,
+      update: {
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        categoria: product.categoria,
+        color: product.color,
+      },
       create: product,
     });
+
+    // Upsert 4-5 ángulos por producto: FRONTAL + variantes laterales/3/4/detalle
+    // Usa la misma imagen base como fallback si no existen assets específicos por ángulo.
+    const baseName = product.image.replace(/\.(jpg|png|webp)$/i, "");
+    const angles: Array<{ angle: "FRONTAL" | "LATERAL_DERECHO" | "LATERAL_IZQUIERDO" | "TRES_CUARTOS" | "DETALLE"; suffix: string; alt: string }> = [
+      { angle: "FRONTAL", suffix: "", alt: `${product.name} - Vista frontal` },
+      { angle: "LATERAL_DERECHO", suffix: "-lateral-der", alt: `${product.name} - Perfil derecho` },
+      { angle: "LATERAL_IZQUIERDO", suffix: "-lateral-izq", alt: `${product.name} - Perfil izquierdo` },
+      { angle: "TRES_CUARTOS", suffix: "-3cuartos", alt: `${product.name} - Vista 3/4` },
+      { angle: "DETALLE", suffix: "-detalle", alt: `${product.name} - Detalle bisagra` },
+    ];
+    for (let i = 0; i < angles.length; i++) {
+      const a = angles[i];
+      // En seed usamos URL base; en producción reemplazar por assets reales por ángulo
+      const url = i === 0 ? product.image : `${baseName}${a.suffix}.jpg`;
+      await prisma.productImage.upsert({
+        where: { productId_sortOrder: { productId: product.id, sortOrder: i } },
+        update: { url, angle: a.angle, alt: a.alt },
+        create: { productId: product.id, url, angle: a.angle, alt: a.alt, sortOrder: i },
+      });
+    }
   }
 
-  console.log(`Seed completado: ${products.length} productos insertados`);
+  console.log(`Seed completado: ${products.length} productos insertados (con 5 imágenes c/u)`);
 
   const motors = [
     {

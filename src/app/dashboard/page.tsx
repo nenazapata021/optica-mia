@@ -3,8 +3,9 @@
 import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { productosLentes, productosGafasSol } from "../data/productos";
-import { ShoppingCart, Package, Sun, Eye, Trash2, BarChart3, Table, ClipboardList, Mail, LogOut } from "lucide-react";
+import { ShoppingCart, Package, Sun, Eye, Trash2, BarChart3, Table, ClipboardList, Mail, LogOut, Plus } from "lucide-react";
 import Logo from "../components/Logo";
+import AddProductModal from "./AddProductModal";
 
 const AUTH_KEY = "optica-mia-auth";
 
@@ -48,6 +49,7 @@ export default function AdminDashboard() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     // Lectura de sessionStorage en montaje; evita mismatch de hidratación SSR
@@ -283,10 +285,29 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
       </aside>
 
       <div className="flex-1 overflow-x-auto">
-        <div className="bg-[#008294] px-6 py-8">
-          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-          <p className="mt-1 text-[#C39A3C]">Panel de administración</p>
+        <div className="flex flex-col gap-4 bg-[#008294] px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+            <p className="mt-1 text-sm font-medium text-[#C39A3C]">Panel de administración</p>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center justify-center gap-2 self-start rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-[#008294] shadow-sm transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#008294] sm:self-auto"
+            aria-label="Añadir producto"
+          >
+            <Plus size={18} aria-hidden />
+            <span>Añadir producto</span>
+          </button>
         </div>
+        {showAddModal && (
+          <AddProductModal
+            onClose={() => setShowAddModal(false)}
+            onCreated={() => {
+              setShowAddModal(false);
+              setTab("products");
+            }}
+          />
+        )}
 
         <div className="mx-auto max-w-7xl px-4 py-6">
           {tab === "stats" && (
