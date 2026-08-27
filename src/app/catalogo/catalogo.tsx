@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import { useCart } from "../context/CartContextType";
 import { useFavorites } from "../context/FavoritesContext";
 import { type Producto } from "../types/producto";
-import { Heart } from "lucide-react";
+import { Heart, LoaderCircle } from "lucide-react";
 import ModalProbador from "../modal probador/modalProbador";
 import TipoLenteModal from "../tipo-lente/TipoLenteModal";
+import RegistroModal from "../components/RegistroModal";
 
 interface CatalogoProps {
   titulo: string;
@@ -52,6 +53,8 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
   }, [filtro]);
   const [productoParaProbar, setProductoParaProbar] = useState<Producto | null>(null);
   const [productoParaLentes, setProductoParaLentes] = useState<Producto | null>(null);
+  const [productoPendiente, setProductoPendiente] = useState<Producto | null>(null);
+  const [verificando, setVerificando] = useState(false);
 
   const router = useRouter();
 
@@ -68,8 +71,28 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
     )
   );
 
-  const handleSeleccionarMontura = (producto: Producto) => {
-    setProductoParaLentes(producto);
+  const handleSeleccionarMontura = async (producto: Producto) => {
+    const cached = localStorage.getItem("optica-mia-customer-data");
+    if (cached) {
+      setProductoParaLentes(producto);
+      return;
+    }
+
+    setVerificando(true);
+    try {
+      const res = await fetch("/api/user/status");
+      const data = await res.json().catch(() => ({ isFirstTime: true }));
+      if (data.isFirstTime === false) {
+        localStorage.setItem("optica-mia-customer-data", JSON.stringify({ nombre: "Cliente web" }));
+        setProductoParaLentes(producto);
+        return;
+      }
+      setProductoPendiente(producto);
+    } catch {
+      setProductoPendiente(producto);
+    } finally {
+      setVerificando(false);
+    }
   };
 
   const handleLensSelect = (tipo: string, color?: string) => {
@@ -118,6 +141,28 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
           onSelect={handleLensSelect}
           onClose={() => setProductoParaLentes(null)}
         />
+      )}
+
+      {productoPendiente && (
+        <RegistroModal
+          producto={productoPendiente}
+          onClose={() => setProductoPendiente(null)}
+          onSuccess={(customer) => {
+            localStorage.setItem(
+              "optica-mia-customer-data",
+              JSON.stringify({ id: customer.id, nombre: customer.nombre, email: customer.email })
+            );
+            const p = productoPendiente;
+            setProductoPendiente(null);
+            setProductoParaLentes(p);
+          }}
+        />
+      )}
+
+      {verificando && (
+        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-white/60 p-4">
+          <LoaderCircle size={32} className="animate-spin text-[#008294]" />
+        </div>
       )}
 
       <div className="w-full min-h-screen bg-slate-50 py-10 px-2">

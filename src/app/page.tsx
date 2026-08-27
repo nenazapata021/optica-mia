@@ -1,7 +1,6 @@
 import logoOriginalOpticaMia from "./assets/logos/Logo-optica-mia-original.jpg";
 import Image from "next/image";
 import Link from "next/link";
-
 import Carousel from "./carousel/carousel";
 import Catalogo from "./catalogo/catalogo";
 import Servicios from "./servicios/servicios";

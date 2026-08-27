@@ -13,7 +13,18 @@ export async function POST(request: Request) {
       update: { nombre, telefono: telefono || "", direccion: dir, hasCompletedOnboarding: true },
       create: { nombre, email, telefono: telefono || "", direccion: dir, hasCompletedOnboarding: true },
     });
-    return NextResponse.json({ id: customer.id, email: customer.email }, { status: 201 });
+
+    const res = NextResponse.json(
+      { id: customer.id, email: customer.email, nombre: customer.nombre },
+      { status: 201 }
+    );
+    res.cookies.set("cid", customer.id, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+      httpOnly: false,
+    });
+    return res;
   } catch (error) {
     console.error("Customers POST error:", error);
     return NextResponse.json({ error: "Error al guardar cliente" }, { status: 500 });
