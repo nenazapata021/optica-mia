@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image, { type StaticImageData } from 'next/image';
 import { useRouter } from "next/navigation";
 import { useCart } from "../context/CartContextType";
 import { useFavorites } from "../context/FavoritesContext";
@@ -10,6 +9,7 @@ import { Heart, LoaderCircle } from "lucide-react";
 import ModalProbador from "../modal probador/modalProbador";
 import TipoLenteModal from "../tipo-lente/TipoLenteModal";
 import RegistroModal from "../components/RegistroModal";
+import ProductImageCarousel from "../components/ProductImageCarousel";
 
 interface CatalogoProps {
   titulo: string;
@@ -17,16 +17,12 @@ interface CatalogoProps {
   listaProductos: Producto[];
 }
 
-// --- FUNCIÓN AUXILIAR PARA MANEJAR LA IMAGEN ---
-// Esta función se encarga de obtener la fuente de la imagen de forma segura.
-function getProductImageSrc(image: Producto['image']): string | StaticImageData | null {
-  if (Array.isArray(image)) {
-    // Si es un arreglo, devuelve la primera imagen (o null si está vacío)
-    return image.length > 0 ? image[0] : null;
-  }
-  // Si no es un arreglo, devuelve la imagen directamente (o null si es nulo/undefined)
-  return image || null;
-}
+// Galería de demostración: todas las fotos de montura disponibles en /public/monturas.
+const GALLERY_IMAGES = Array.from(
+  { length: 21 },
+  (_, i) => `/monturas/foto${i + 1}.png`
+);
+
 export default function Catalogo({ titulo, descripcion, listaProductos = [] }: CatalogoProps) {
   const { addToCart } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -187,30 +183,19 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
           {productosFiltrados.map((producto) => (
             <div key={producto.id} className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-sm flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
               
-              {(() => {
-                const imageSrc = getProductImageSrc(producto.image);
-                return (
-              <div className="relative w-full h-56 rounded-xl overflow-hidden mb-4 bg-gray-50">
-                    {imageSrc && <Image 
-                      src={imageSrc}
-                      alt={producto.name}
-                      fill
-                      className="object-contain p-2"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    />}
-                    <button
-                      onClick={(e) => { e.preventDefault(); toggleFavorite(producto); }}
-                      className="absolute top-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 shadow-md transition hover:scale-110"
-                      aria-label={isFavorite(producto.id) ? "Quitar de favoritos" : "Agregar a favoritos"}
-                    >
-                      <Heart
-                        size={20}
-                        className={isFavorite(producto.id) ? "fill-red-500 text-red-500" : "text-gray-400"}
-                      />
-                    </button>
+              <div className="relative w-full mb-4">
+                <ProductImageCarousel images={GALLERY_IMAGES} alt={producto.name} />
+                <button
+                  onClick={(e) => { e.preventDefault(); toggleFavorite(producto); }}
+                  className="absolute top-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 shadow-md transition hover:scale-110"
+                  aria-label={isFavorite(producto.id) ? "Quitar de favoritos" : "Agregar a favoritos"}
+                >
+                  <Heart
+                    size={20}
+                    className={isFavorite(producto.id) ? "fill-red-500 text-red-500" : "text-gray-400"}
+                  />
+                </button>
               </div>
-                );
-              })()}
               <div className="flex flex-col [flex-grow]">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex flex-col pr-2">
