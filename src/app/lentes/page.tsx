@@ -8,6 +8,7 @@ function mapearLentes(): Producto[] {
     name: p.nombre,
     price: p.precio,
     image: p.imagen,
+    imageSide: p.imageSide,
     categoria: p.categoria as "mujer" | "hombre" | "ninos",
     color: p.color,
     descripcion: "",

@@ -9,7 +9,8 @@ import { Heart, LoaderCircle } from "lucide-react";
 import ModalProbador from "../modal probador/modalProbador";
 import TipoLenteModal from "../tipo-lente/TipoLenteModal";
 import RegistroModal from "../components/RegistroModal";
-import ProductImageCarousel from "../components/ProductImageCarousel";
+import ProductImageHover from "../components/ProductImageHover";
+import { type StaticImageData } from "next/image";
 
 interface CatalogoProps {
   titulo: string;
@@ -17,11 +18,10 @@ interface CatalogoProps {
   listaProductos: Producto[];
 }
 
-// Galería de demostración: todas las fotos de montura disponibles en /public/monturas.
-const GALLERY_IMAGES = Array.from(
-  { length: 21 },
-  (_, i) => `/monturas/foto${i + 1}.png`
-);
+function getFirstImage(image: Producto["image"]): string | StaticImageData {
+  if (Array.isArray(image)) return image[0];
+  return image;
+}
 
 export default function Catalogo({ titulo, descripcion, listaProductos = [] }: CatalogoProps) {
   const { addToCart } = useCart();
@@ -184,7 +184,12 @@ export default function Catalogo({ titulo, descripcion, listaProductos = [] }: C
             <div key={producto.id} className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-sm flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
               
               <div className="relative w-full mb-4">
-                <ProductImageCarousel images={GALLERY_IMAGES} alt={producto.name} />
+                <ProductImageHover
+                  imageFront={getFirstImage(producto.image)}
+                  imageSide={producto.imageSide}
+                  alt={producto.name}
+                  className="w-full aspect-[4/3]"
+                />
                 <button
                   onClick={(e) => { e.preventDefault(); toggleFavorite(producto); }}
                   className="absolute top-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 shadow-md transition hover:scale-110"

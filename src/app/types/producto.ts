@@ -21,6 +21,8 @@ export interface Producto {
   price: number;
   /** @deprecated mantener para compatibilidad legacy; usar `images` */
   image: StaticImageData | string | Array<StaticImageData | string>;
+  /** Imagen lateral (vista 3/4) para hover cross-fade en tarjetas de producto */
+  imageSide?: StaticImageData | string;
   /** Array normalizado 4-5 imágenes con ángulo/alt. Fallback a `image` si vacío. Opcional para compat legacy. */
   images?: ProductImageDTO[];
   categoria: "mujer" | "hombre" | "ninos" | "sol";

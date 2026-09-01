@@ -8,6 +8,7 @@ export default function GafasDeSolPage() {
     name: p.nombre,
     price: p.precio,
     image: p.imagen,
+    imageSide: p.imageSide,
     categoria: "sol",
     color: p.color,
     descripcion: "",
