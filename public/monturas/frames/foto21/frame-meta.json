@@ -1,0 +1,53 @@
+{
+  "id": "foto21",
+  "name": "foto21",
+  "frameMaterial": "plastic",
+  "lensType": "clear",
+  "scaleMultiplier": 1,
+  "anchorPoints": {
+    "leftEye": {
+      "x": -0.032,
+      "y": 0.002,
+      "z": 0.015
+    },
+    "rightEye": {
+      "x": 0.032,
+      "y": 0.002,
+      "z": 0.015
+    },
+    "noseBridge": {
+      "x": 0,
+      "y": 0.008,
+      "z": 0.02
+    },
+    "leftTemple": {
+      "x": -0.075,
+      "y": 0.005,
+      "z": 0.01
+    },
+    "rightTemple": {
+      "x": 0.075,
+      "y": 0.005,
+      "z": 0.01
+    }
+  },
+  "boundingBox": {
+    "min": [
+      -0.08,
+      -0.03,
+      -0.01
+    ],
+    "max": [
+      0.08,
+      0.03,
+      0.01
+    ]
+  },
+  "lensParams": {
+    "ior": 1.52,
+    "thickness": 0.002,
+    "tintIntensity": 0
+  },
+  "createdAt": "2026-09-02T16:39:33.714Z",
+  "version": "1.0.0"
+}

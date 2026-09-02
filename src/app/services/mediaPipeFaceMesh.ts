@@ -497,4 +497,103 @@ export class MediaPipeFaceMeshEngine {
   private toPoint3D(p: Point, z: number): Point3D {
     return { x: p.x, y: p.y, z };
   }
+
+  /**
+   * Calculate 3D transform for WebGL renderer.
+   * Returns position, rotation, and scale in normalized world coordinates.
+   */
+  calculateGlassesTransform3D(
+    landmarks: FaceLandmarks,
+    imageWidth: number,
+    imageHeight: number,
+    glassesWidth: number,
+    glassesHeight: number,
+    scaleMultiplier = 1,
+  ): {
+    position: { x: number; y: number; z: number };
+    rotation: { x: number; y: number; z: number };
+    scale: number;
+    headPose: HeadPose;
+  } {
+    const headPose = this.extractHeadPose(landmarks);
+    const templeCfg = TRY_ON_CONFIG.temple;
+
+    // Temple-to-temple distance in pixels
+    const earLeftPx = {
+      x: landmarks.earLeft.x * imageWidth,
+      y: landmarks.earLeft.y * imageHeight,
+    };
+    const earRightPx = {
+      x: landmarks.earRight.x * imageWidth,
+      y: landmarks.earRight.y * imageHeight,
+    };
+    const templeToTempleDist = Math.hypot(
+      earRightPx.x - earLeftPx.x,
+      earRightPx.y - earLeftPx.y
+    );
+
+    // Glasses dimensions
+    const finalGlassesWidth = templeToTempleDist * templeCfg.templeMarginFactor * scaleMultiplier;
+    const aspect = glassesHeight / glassesWidth;
+    const finalGlassesHeight = finalGlassesWidth * aspect;
+
+    // Center position (bridge center)
+    const innerLeftPx = {
+      x: landmarks.leftEyeInnerCorner.x * imageWidth,
+      y: landmarks.leftEyeInnerCorner.y * imageHeight,
+    };
+    const innerRightPx = {
+      x: landmarks.rightEyeInnerCorner.x * imageWidth,
+      y: landmarks.rightEyeInnerCorner.y * imageHeight,
+    };
+    const centerX = (innerLeftPx.x + innerRightPx.x) / 2;
+    const innerEyeMidY = (innerLeftPx.y + innerRightPx.y) / 2;
+    const noseBridgePx = {
+      x: landmarks.noseBridge.x * imageWidth,
+      y: landmarks.noseBridge.y * imageHeight,
+    };
+    const centerY = innerEyeMidY * 0.7 + noseBridgePx.y * 0.3;
+
+    // Eye rotation
+    const leftPx = {
+      x: landmarks.leftEye.x * imageWidth,
+      y: landmarks.leftEye.y * imageHeight,
+    };
+    const rightPx = {
+      x: landmarks.rightEye.x * imageWidth,
+      y: landmarks.rightEye.y * imageHeight,
+    };
+    const eyeDX = rightPx.x - leftPx.x;
+    const eyeDY = rightPx.y - leftPx.y;
+    const roll = Math.atan2(eyeDY, eyeDX);
+
+    // Convert to normalized world coordinates (-1 to 1)
+    // Assuming camera at z=0.5, FOV=50deg, aspect=width/height
+    const fov = 50 * (Math.PI / 180);
+    const aspectRatio = imageWidth / imageHeight;
+    const worldScale = Math.tan(fov / 2) * 0.5 * 2; // At z=0.5
+
+    const normX = (centerX / imageWidth) * 2 - 1;
+    const normY = 1 - (centerY / imageHeight) * 2;
+    const normZ = 0;
+
+    // World position
+    const position = {
+      x: normX * worldScale * aspectRatio,
+      y: normY * worldScale,
+      z: normZ,
+    };
+
+    // World rotation (yaw, pitch, roll)
+    const rotation = {
+      x: headPose.pitch,
+      y: headPose.yaw,
+      z: roll,
+    };
+
+    // Scale factor for world units
+    const scale = (finalGlassesWidth / imageWidth) * worldScale * aspectRatio * 100;
+
+    return { position, rotation, scale, headPose };
+  }
 }
