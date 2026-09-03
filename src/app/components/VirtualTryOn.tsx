@@ -24,8 +24,6 @@ import type { Producto } from "../types/producto";
 
 interface VirtualTryOnProps {
   glassesFrontalImageUrl: string;
-  glassesTempleLeftImageUrl: string;
-  glassesTempleRightImageUrl: string;
   faceSrc?: string;
   scaleMultiplier?: number;
   producto?: Producto;
@@ -43,21 +41,14 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Detecta si dos elementos <img> cargan el mismo asset (evita dibujos duplicados). */
-function isSameAsset(a: HTMLImageElement, b: HTMLImageElement): boolean {
-  return a.src === b.src;
-}
-
 /**
- * Draw the full glasses overlay (temples + frontal) directly on the canvas.
+ * Draw the full glasses overlay (frontal only) directly on the canvas.
  * Used by the static photo path.
  */
 function renderGlassesFrame(
   faceSource: HTMLImageElement | HTMLVideoElement,
   glassesImage: HTMLImageElement,
   overlay: GlassesOverlayConfig,
-  leftTempleImg: HTMLImageElement | null,
-  rightTempleImg: HTMLImageElement | null,
   canvas: HTMLCanvasElement,
 ): void {
   const ctx = canvas.getContext("2d");
@@ -68,22 +59,7 @@ function renderGlassesFrame(
 
   const { centerX, centerY, rotation, glassesWidth, glassesHeight, verticalOffset } = overlay;
 
-  // Determine occlusion order based on yaw
-  const leftIsInFront = overlay.headPose.yaw >= 0;
-
-  const behind = leftIsInFront
-    ? { img: rightTempleImg, t: overlay.rightTemple }
-    : { img: leftTempleImg, t: overlay.leftTemple };
-  const front = leftIsInFront
-    ? { img: leftTempleImg, t: overlay.leftTemple }
-    : { img: rightTempleImg, t: overlay.rightTemple };
-
-  // 1) Temple behind the face (omitido si es la misma imagen frontal: evita monturas duplicadas)
-  if (behind.img && behind.t && !isSameAsset(behind.img, glassesImage)) {
-    drawTempleArm(ctx, behind.img, behind.t);
-  }
-
-  // 2) Frontal frame
+  // Frontal frame only (no temples)
   ctx.save();
   ctx.translate(centerX, centerY + (verticalOffset || 0));
   ctx.rotate(rotation);
@@ -98,34 +74,10 @@ function renderGlassesFrame(
   );
   ctx.globalCompositeOperation = "source-over";
   ctx.restore();
-
-  // 3) Temple in front of the face (omitido si es la misma imagen frontal)
-  if (front.img && front.t && !isSameAsset(front.img, glassesImage)) {
-    drawTempleArm(ctx, front.img, front.t);
-  }
-}
-
-function drawTempleArm(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  t: GlassesOverlayConfig["leftTemple"],
-): void {
-  if (t.opacity < 0.01 || t.length < 1) return;
-
-  ctx.save();
-  ctx.globalAlpha = t.opacity;
-  ctx.translate(t.anchorX, t.anchorY);
-  ctx.rotate(t.rotation);
-  ctx.transform(t.scaleX, t.skewY, t.skewX, 1, 0, 0);
-
-  ctx.drawImage(img, -t.width / 2, -t.length, t.width, t.length);
-  ctx.restore();
 }
 
 export default function VirtualTryOn({
   glassesFrontalImageUrl,
-  glassesTempleLeftImageUrl,
-  glassesTempleRightImageUrl,
   faceSrc,
   scaleMultiplier,
   producto,
@@ -154,8 +106,6 @@ export default function VirtualTryOn({
 
   const [faceImage, setFaceImage] = useState<HTMLImageElement | null>(null);
   const [glassesImage, setGlassesImage] = useState<HTMLImageElement | null>(null);
-  const [leftTempleImage, setLeftTempleImage] = useState<HTMLImageElement | null>(null);
-  const [rightTempleImage, setRightTempleImage] = useState<HTMLImageElement | null>(null);
   const [overlay, setOverlay] = useState<GlassesOverlayConfig | null>(null);
   const [landmarks, setLandmarks] = useState<FaceLandmarks | null>(null);
   const [staticError, setStaticError] = useState<string | null>(null);
@@ -185,37 +135,18 @@ export default function VirtualTryOn({
   const streamRef = useRef<MediaStream | null>(null);
   const webglInitializedRef = useRef(false);
 
-  // Load all three glasses images (frontal + temples)
+  // Load only the frontal glasses image (temples disabled for front-only view)
   useEffect(() => {
     let cancelled = false;
 
-    // Si la URL de la pata es la misma del frente, no cargarla:
-    // dibujar el PNG frontal como "pata" genera monturas pequeñas duplicadas.
-    const isDuplicateTemple = (templeUrl?: string) =>
-      !templeUrl || templeUrl === glassesFrontalImageUrl;
+    loadImage(glassesFrontalImageUrl).then((img) => {
+      if (!cancelled) setGlassesImage(img);
+    }).catch(() => {});
 
-    const loadAll = async () => {
-      const [frontal, leftTemple, rightTemple] = await Promise.allSettled([
-        loadImage(glassesFrontalImageUrl),
-        isDuplicateTemple(glassesTempleLeftImageUrl)
-          ? Promise.resolve(null)
-          : loadImage(glassesTempleLeftImageUrl),
-        isDuplicateTemple(glassesTempleRightImageUrl)
-          ? Promise.resolve(null)
-          : loadImage(glassesTempleRightImageUrl),
-      ]);
-      if (cancelled) return;
-
-      setGlassesImage(frontal.status === "fulfilled" ? frontal.value : null);
-      setLeftTempleImage(leftTemple.status === "fulfilled" ? leftTemple.value : null);
-      setRightTempleImage(rightTemple.status === "fulfilled" ? rightTemple.value : null);
-    };
-
-    void loadAll();
     return () => {
       cancelled = true;
     };
-  }, [glassesFrontalImageUrl, glassesTempleLeftImageUrl, glassesTempleRightImageUrl]);
+  }, [glassesFrontalImageUrl]);
 
   // Load face image from src prop
   useEffect(() => {
@@ -333,7 +264,7 @@ export default function VirtualTryOn({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, faceImage, glassesImage, scaleMultiplier]);
 
-  // Render static frame with temples (Canvas 2D)
+  // Render static frame (Canvas 2D) — frontal only, no temples
   useEffect(() => {
     if (mode !== "static") return;
     if (useWebGL) return; // Skip Canvas 2D if WebGL is active
@@ -341,9 +272,9 @@ export default function VirtualTryOn({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    renderGlassesFrame(faceImage, glassesImage, overlay, leftTempleImage, rightTempleImage, canvas);
+    renderGlassesFrame(faceImage, glassesImage, overlay, canvas);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, faceImage, glassesImage, overlay, leftTempleImage, rightTempleImage, useWebGL]);
+  }, [mode, faceImage, glassesImage, overlay, useWebGL]);
 
   // WebGL Render loop (when WebGL is active)
   useEffect(() => {
@@ -424,8 +355,6 @@ const liveBusy = liveStatus === "loading-model" || liveStatus === "starting-came
           faceImage,
           glassesImage!,
           overlay,
-          leftTempleImage,
-          rightTempleImage,
           landmarks,
         );
       }
@@ -434,8 +363,6 @@ const liveBusy = liveStatus === "loading-model" || liveStatus === "starting-came
         faceImage,
         glassesImage!,
         overlay,
-        leftTempleImage,
-        rightTempleImage,
         landmarks,
       );
     }
@@ -465,7 +392,7 @@ const liveBusy = liveStatus === "loading-model" || liveStatus === "starting-came
             }`}
           />
 
-          {/* Overlay de la montura (PNG transparente) */}
+          {/* Overlay de la montura (PNG transparente) — solo frente, sin patillas */}
           {transform && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
@@ -478,6 +405,8 @@ const liveBusy = liveStatus === "loading-model" || liveStatus === "starting-came
                 transform,
                 width: scale !== null ? `${scale}px` : undefined,
                 opacity: isFaceDetected && liveStatus === "running" ? 1 : 0,
+                maskImage: "linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
+                WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
               }}
             />
           )}

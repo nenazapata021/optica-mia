@@ -2,7 +2,7 @@
 
 import { useCallback, useRef } from "react";
 import { TRY_ON_CONFIG } from "../config/tryOn";
-import type { GlassesOverlayConfig, OverlayConfig, TempleArmTransform } from "../types/tryOn";
+import type { GlassesOverlayConfig, OverlayConfig } from "../types/tryOn";
 import type { FaceLandmarks } from "../types/tryOn";
 
 interface UseCanvasRendererReturn {
@@ -15,15 +15,11 @@ interface UseCanvasRendererReturn {
     faceImage: HTMLImageElement,
     glassesImage: HTMLImageElement,
     overlay: GlassesOverlayConfig,
-    leftTempleImg: HTMLImageElement | null,
-    rightTempleImg: HTMLImageElement | null,
   ) => void;
   download: (
     faceImage: HTMLImageElement,
     glassesImage: HTMLImageElement,
     overlay: GlassesOverlayConfig,
-    leftTempleImg: HTMLImageElement | null,
-    rightTempleImg: HTMLImageElement | null,
     landmarks: FaceLandmarks,
   ) => Promise<void>;
   clear: () => void;
@@ -215,64 +211,13 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
   );
 
   /**
-   * Draw a single temple arm on the canvas with 3D perspective transforms.
-   */
-  const drawTempleArm = useCallback(
-    (
-      ctx: CanvasRenderingContext2D,
-      templeImg: HTMLImageElement,
-      transform: TempleArmTransform,
-    ): void => {
-      if (transform.opacity < 0.01 || transform.length < 1) return;
-
-      ctx.save();
-      ctx.globalAlpha = transform.opacity;
-
-      // Move to the anchor point (where the arm attaches to the frame)
-      ctx.translate(transform.anchorX, transform.anchorY);
-      ctx.rotate(transform.rotation);
-
-      // Apply trapezoidal skew for perspective
-      // skewX shifts the far end horizontally, creating depth illusion
-      ctx.transform(
-        transform.scaleX,     // a: horizontal scale
-        transform.skewY,      // b: vertical skew
-        transform.skewX,      // c: horizontal skew
-        1,                    // d: vertical scale
-        0,                    // e: horizontal translation
-        0,                    // f: vertical translation
-      );
-
-      // Draw the temple arm image extending from the anchor point
-      // The arm extends to the left (negative x in local coords) from the anchor
-      // since we've rotated toward the ear direction
-      const armWidth = transform.width;
-      const armLength = transform.length;
-
-      ctx.drawImage(
-        templeImg,
-        -armWidth / 2,   // center horizontally on anchor
-        -armLength,       // extend upward (away from the frame)
-        armWidth,
-        armLength,
-      );
-
-      ctx.restore();
-    },
-    [],
-  );
-
-  /**
-   * Draw the full glasses overlay: temples (behind), frontal frame, temples (in front).
-   * The drawing order depends on head yaw to handle occlusion correctly.
+   * Draw the full glasses overlay: frontal frame only (no temples).
    */
   const drawGlassesWithTemples = useCallback(
     (
       faceImage: HTMLImageElement,
       glassesImage: HTMLImageElement,
       overlay: GlassesOverlayConfig,
-      leftTempleImg: HTMLImageElement | null,
-      rightTempleImg: HTMLImageElement | null,
     ): void => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -286,28 +231,7 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
 
       const { centerX, centerY, rotation, glassesWidth, glassesHeight, verticalOffset } = overlay;
 
-      // Determine drawing order based on yaw:
-      // If yaw > 0 (looking right), left temple is in front, right is behind
-      // If yaw < 0 (looking left), right temple is in front, left is behind
-      const leftIsInFront = overlay.headPose.yaw >= 0;
-
-      const behindTemple = leftIsInFront
-        ? { img: rightTempleImg, transform: overlay.rightTemple }
-        : { img: leftTempleImg, transform: overlay.leftTemple };
-      const inFrontTemple = leftIsInFront
-        ? { img: leftTempleImg, transform: overlay.leftTemple }
-        : { img: rightTempleImg, transform: overlay.rightTemple };
-
-      // Guarda anti-duplicado: nunca dibujar el PNG frontal como pata.
-      const isUsableTemple = (templeImg: HTMLImageElement | null): boolean =>
-        !!templeImg && templeImg.src !== glassesImage.src;
-
-      // 1. Draw temple arm that goes BEHIND the face
-      if (behindTemple.img && behindTemple.transform && isUsableTemple(behindTemple.img)) {
-        drawTempleArm(ctx, behindTemple.img, behindTemple.transform);
-      }
-
-      // 2. Draw the frontal frame (bridge + lenses)
+      // Frontal frame only (no temples)
       ctx.save();
       ctx.translate(centerX, centerY + (verticalOffset || 0));
       ctx.rotate(rotation);
@@ -325,13 +249,8 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       );
       ctx.globalCompositeOperation = "source-over";
       ctx.restore();
-
-      // 3. Draw temple arm that goes IN FRONT of the face
-      if (inFrontTemple.img && inFrontTemple.transform && isUsableTemple(inFrontTemple.img)) {
-        drawTempleArm(ctx, inFrontTemple.img, inFrontTemple.transform);
-      }
     },
-    [drawTempleArm],
+    [],
   );
 
   const download = useCallback(
@@ -339,8 +258,6 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       faceImage: HTMLImageElement,
       glassesImage: HTMLImageElement,
       overlay: GlassesOverlayConfig,
-      leftTempleImg: HTMLImageElement | null,
-      rightTempleImg: HTMLImageElement | null,
       landmarks: FaceLandmarks,
     ): Promise<void> => {
       const outputSize = 1024;
@@ -412,50 +329,7 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       const glassesHeight = overlay.glassesHeight * scaleY;
       const rotation = overlay.rotation;
 
-      // Draw temples first (behind/front based on yaw)
-      const leftIsInFront = overlay.headPose.yaw >= 0;
-
-      const behindTemple = leftIsInFront
-        ? { img: rightTempleImg, transform: overlay.rightTemple }
-        : { img: leftTempleImg, transform: overlay.leftTemple };
-      const inFrontTemple = leftIsInFront
-        ? { img: leftTempleImg, transform: overlay.leftTemple }
-        : { img: rightTempleImg, transform: overlay.rightTemple };
-
-      const isUsableTemple = (templeImg: HTMLImageElement | null): boolean =>
-        !!templeImg && templeImg.src !== glassesImage.src;
-
-      const drawTempleOnCanvas = (
-        ctx: CanvasRenderingContext2D,
-        templeImg: HTMLImageElement,
-        transform: TempleArmTransform,
-      ): void => {
-        if (transform.opacity < 0.01 || transform.length < 1) return;
-
-        ctx.save();
-        ctx.globalAlpha = transform.opacity;
-
-        // Map anchor to output canvas
-        const anchorX = (transform.anchorX - sx) * scaleX;
-        const anchorY = (transform.anchorY - sy) * scaleY;
-        const length = transform.length * scaleX;
-        const width = transform.width * scaleX;
-
-        ctx.translate(anchorX, anchorY);
-        ctx.rotate(transform.rotation);
-
-        ctx.transform(transform.scaleX, transform.skewY, transform.skewX, 1, 0, 0);
-
-        ctx.drawImage(templeImg, -width / 2, -length, width, length);
-        ctx.restore();
-      };
-
-      // 1. Behind temple
-      if (behindTemple.img && behindTemple.transform && isUsableTemple(behindTemple.img)) {
-        drawTempleOnCanvas(octx, behindTemple.img, behindTemple.transform);
-      }
-
-      // 2. Frontal frame
+      // Frontal frame only (no temples)
       octx.save();
       octx.translate(centerX, centerY);
       octx.rotate(rotation);
@@ -473,11 +347,6 @@ export function useCanvasRenderer(): UseCanvasRendererReturn {
       );
       octx.globalCompositeOperation = "source-over";
       octx.restore();
-
-      // 3. Front temple
-      if (inFrontTemple.img && inFrontTemple.transform && isUsableTemple(inFrontTemple.img)) {
-        drawTempleOnCanvas(octx, inFrontTemple.img, inFrontTemple.transform);
-      }
 
       // Download
       const link = document.createElement("a");

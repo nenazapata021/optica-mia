@@ -103,8 +103,6 @@ export default function SimulacionVirtual() {
             <div className="sticky top-20">
               <VirtualTryOn
           glassesFrontalImageUrl={datos.producto.image}
-          glassesTempleLeftImageUrl={datos.producto.image}
-          glassesTempleRightImageUrl={datos.producto.image}
           faceSrc={datos.fotoUrl}
           scaleMultiplier={datos.producto.scaleMultiplier}
         />

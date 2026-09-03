@@ -5,12 +5,15 @@ import { LoaderCircle, Upload, X, Camera } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type Producto } from "../types/producto";
 import { TRY_ON_CONFIG } from "../config/tryOn";
+import { normalizeImage } from "@/lib/normalizeImage";
 
 interface ModalProbadorProps {
   producto: Producto;
   onClose: () => void;
   listaMonturas?: Producto[];
 }
+
+type ModalStatus = "idle" | "normalizing" | "loading";
 
 export default function ModalProbador({ producto, onClose }: ModalProbadorProps) {
   const router = useRouter();
@@ -19,6 +22,7 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [cargando, setCargando] = useState(false);
+  const [status, setStatus] = useState<ModalStatus>("idle");
   const [error, setError] = useState("");
   const [modoVideo, setModoVideo] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -53,6 +57,37 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
     return (TRY_ON_CONFIG.upload.acceptedTypes as readonly string[]).includes(file.type);
   };
 
+  /**
+   * Normaliza un File a 1024×1024 PNG y retorna data URL para sessionStorage.
+   */
+  const procesarYGuarda = async (file: File) => {
+    setStatus("normalizing");
+    setError("");
+
+    try {
+      // Validar tamaño mínimo intrínseco antes de normalizar
+      const img = await loadImageFromUrl(URL.createObjectURL(file));
+      if (img.naturalWidth < 256 || img.naturalHeight < 256) {
+        setError(`La imagen es demasiado pequeña (${img.naturalWidth}×${img.naturalHeight}px). Usa una foto más grande.`);
+        setStatus("idle");
+        return;
+      }
+
+      // Normalizar a 1024×1024 cuadrado
+      const result = await normalizeImage(file, 1024);
+
+      // Convertir blob a data URL para sessionStorage
+      const dataUrl = await blobToDataUrl(result.blob);
+      setFotoPreview(dataUrl);
+      setStatus("loading");
+      guardarYContinuar(dataUrl);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Error al procesar la imagen.";
+      setError(msg);
+      setStatus("idle");
+    }
+  };
+
   const seleccionarArchivo = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -61,14 +96,8 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
       event.target.value = "";
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setFotoPreview(dataUrl);
-      event.target.value = "";
-      guardarYContinuar(dataUrl);
-    };
-    reader.readAsDataURL(file);
+    event.target.value = "";
+    void procesarYGuarda(file);
   };
 
   const iniciarVideo = async () => {
@@ -93,7 +122,7 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
     setModoVideo(false);
   };
 
-  const capturarFoto = () => {
+  const capturarFoto = async () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
@@ -105,19 +134,34 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = reader.result as string;
-          setFotoPreview(dataUrl);
-          detenerVideo();
-          guardarYContinuar(dataUrl);
-        };
-        reader.readAsDataURL(blob);
+    setStatus("normalizing");
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        setError("No se pudo capturar la foto.");
+        setStatus("idle");
+        return;
+      }
+
+      try {
+        // Crear File desde el blob para usar normalizeImage
+        const file = new File([blob], "camera-capture.jpg", { type: "image/jpeg" });
+        const result = await normalizeImage(file, 1024);
+
+        const dataUrl = await blobToDataUrl(result.blob);
+        setFotoPreview(dataUrl);
+        detenerVideo();
+        setStatus("loading");
+        guardarYContinuar(dataUrl);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Error al procesar la foto.";
+        setError(msg);
+        setStatus("idle");
       }
     }, "image/jpeg", 0.9);
   };
+
+  const isBusy = cargando || status === "normalizing" || status === "loading";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
@@ -155,25 +199,34 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
 
             {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
-            {!modoVideo && (
+            {status === "normalizing" && (
+              <div className="mb-4 flex items-center justify-center gap-2 rounded-xl bg-[#e0f2f4] p-4">
+                <LoaderCircle size={20} className="animate-spin text-[#008294]" />
+                <p className="text-sm font-medium text-[#005f6b]">Normalizando imagen a 1024×1024...</p>
+              </div>
+            )}
+
+            {!modoVideo && status !== "normalizing" && (
               <>
                 <div className="mb-4 flex gap-3">
                   <button
                     onClick={() => inputRef.current?.click()}
-                    className="flex flex-1 flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-5 font-semibold text-slate-600 transition hover:border-[#008294] hover:bg-slate-50"
+                    disabled={isBusy}
+                    className="flex flex-1 flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-5 font-semibold text-slate-600 transition hover:border-[#008294] hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Upload size={26} />
                     Subir foto
                   </button>
                   <button
                     onClick={iniciarVideo}
-                    className="flex flex-1 flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-5 font-semibold text-slate-600 transition hover:border-[#008294] hover:bg-slate-50"
+                    disabled={isBusy}
+                    className="flex flex-1 flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-5 font-semibold text-slate-600 transition hover:border-[#008294] hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Camera size={26} />
                     Usar cámara
                   </button>
                 </div>
-                <p className="mt-3 text-xs text-slate-400">Usa una foto frontal con buena iluminación.</p>
+                <p className="mt-3 text-xs text-slate-400">Usa una foto frontal con buena iluminación. Se normalizará a 1024×1024.</p>
 
                 <input
                   ref={inputRef}
@@ -194,13 +247,15 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
                 <div className="flex gap-3">
                   <button
                     onClick={capturarFoto}
-                    className="rounded-xl bg-[#008294] px-5 py-2 font-semibold text-white transition hover:bg-[#005f6b]"
+                    disabled={isBusy}
+                    className="rounded-xl bg-[#008294] px-5 py-2 font-semibold text-white transition hover:bg-[#005f6b] disabled:opacity-50"
                   >
-                    Capturar
+                    {status === "normalizing" ? "Procesando..." : "Capturar"}
                   </button>
                   <button
                     onClick={detenerVideo}
-                    className="rounded-xl bg-white/90 px-4 py-2 font-semibold text-slate-700 shadow transition hover:bg-white"
+                    disabled={isBusy}
+                    className="rounded-xl bg-white/90 px-4 py-2 font-semibold text-slate-700 shadow transition hover:bg-white disabled:opacity-50"
                   >
                     Cancelar
                   </button>
@@ -212,4 +267,34 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
       </div>
     </div>
   );
+}
+
+/**
+ * Carga un File como HTMLImageElement desde un object URL.
+ */
+function loadImageFromUrl(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("No se pudo cargar la imagen"));
+    };
+    img.src = url;
+  });
+}
+
+/**
+ * Convierte un Blob a data URL (Promise wrapper).
+ */
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Error al convertir imagen"));
+    reader.readAsDataURL(blob);
+  });
 }

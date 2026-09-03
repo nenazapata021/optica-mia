@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { normalizeImageBuffer } from "@/lib/normalizeImageServer";
 
 export async function POST(request: Request) {
   try {
@@ -15,9 +16,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Archivo no recibido." }, { status: 400 });
     }
 
-    // Validar tipo PNG (salida del procesador)
-    if (file.type !== "image/png") {
-      return NextResponse.json({ error: "La imagen procesada debe ser PNG." }, { status: 400 });
+    // Validar tipo de archivo
+    const acceptedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!acceptedTypes.includes(file.type)) {
+      return NextResponse.json(
+        { error: "Formato no permitido. Usa JPG, PNG o WEBP." },
+        { status: 400 },
+      );
     }
 
     // Validar customer existe
@@ -26,31 +31,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Customer no encontrado. Verifica el email único." }, { status: 404 });
     }
 
-    // Generar nombre único: uuid + timestamp (evita colisiones) - bucket "client-photos"
-    const storageKey = `${crypto.randomUUID()}-${Date.now()}.png`;
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const sizeBytes = buffer.length;
+    // Leer buffer del archivo
+    const inputBuffer = Buffer.from(await file.arrayBuffer());
 
-    // 1024x1024 ya viene validado en cliente, aquí solo persistimos
+    // Normalizar server-side con sharp: cover crop centrado + resize 1024×1024 PNG
+    let normalized;
+    try {
+      normalized = await normalizeImageBuffer(inputBuffer, file.type);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Error al procesar la imagen.";
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+
+    // Generar nombre único
+    const storageKey = `${crypto.randomUUID()}-${Date.now()}.png`;
     const url = `/api/client-photos/${storageKey}`;
+
+    // Guardar en PostgreSQL con dimensiones reales del procesamiento
+    // Prisma Bytes requires Uint8Array<ArrayBuffer> — convert from sharp output
+    const dataBuffer = Buffer.from(normalized.buffer);
 
     await prisma.clientPhoto.create({
       data: {
         storageKey,
         url,
-        mimeType: "image/png",
-        sizeBytes,
-        width: 1024,
-        height: 1024,
-        data: buffer,
+        mimeType: normalized.mimeType,
+        sizeBytes: normalized.sizeBytes,
+        width: normalized.width,
+        height: normalized.height,
+        data: dataBuffer,
         customerId,
       },
     });
 
-    return NextResponse.json({ url, storageKey, sizeBytes }, { status: 201 });
+    return NextResponse.json({ url, storageKey, sizeBytes: normalized.sizeBytes }, { status: 201 });
   } catch (error) {
     console.error("[POST /api/client-photos] Error:", error);
-    // Prisma unique constraint o BYTEA error
     return NextResponse.json({ error: "No se pudo guardar en PostgreSQL. Intenta de nuevo." }, { status: 500 });
   }
 }

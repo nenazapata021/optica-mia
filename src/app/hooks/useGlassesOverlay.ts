@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { FaceLandmarks, OverlayConfig } from "../types/tryOn";
 
-export const GLASSES_SCALE_FACTOR = 1.75;
+export const GLASSES_SCALE_FACTOR = 2.1;
 export const NOSE_ANCHOR_WEIGHT = 0.5;
 
 export function useGlassesOverlay(

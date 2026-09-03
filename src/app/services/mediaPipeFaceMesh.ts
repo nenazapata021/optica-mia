@@ -16,7 +16,7 @@ import type {
 
 type NormalizedLandmark = { x: number; y: number; z: number };
 
-export const GLASSES_SCALE_FACTOR = 1.10;
+export const GLASSES_SCALE_FACTOR = 1.35;
 export const NOSE_ANCHOR_WEIGHT = 0.18;
 
 export class MediaPipeFaceMeshEngine {

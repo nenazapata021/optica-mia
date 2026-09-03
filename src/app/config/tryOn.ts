@@ -48,8 +48,8 @@ export const TRY_ON_CONFIG = {
     minOpacity: 0.15,
     /** Maximum opacity (when fully facing the viewer). */
     maxOpacity: 0.95,
-    /** Margin factor for temple-to-temple width (0.95 = 5% skin margin each side). */
-    templeMarginFactor: 0.95,
+    /** Margin factor for temple-to-temple width (1.10 = montura cubre todo el ancho del rostro + 10%). */
+    templeMarginFactor: 1.1,
   },
   liveEngine: {
     /** Vista espejada estilo selfie (el video se muestra con scaleX(-1)). */

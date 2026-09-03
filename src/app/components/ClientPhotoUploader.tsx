@@ -156,7 +156,8 @@ export default function ClientPhotoUploader({ customerId, onSuccess, onError }: 
             <img
               src={displayPreviewUrl}
               alt="Preview"
-              className="mx-auto h-48 w-48 rounded-xl object-cover border border-slate-200 shadow-sm"
+              className="mx-auto rounded-xl border border-slate-200 shadow-sm object-cover"
+              style={{ width: 446, height: 446 }}
             />
             {showProcessedPreview && (
               <span className="absolute -top-2 -right-2 rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-bold text-white shadow">

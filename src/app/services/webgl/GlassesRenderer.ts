@@ -642,8 +642,9 @@ const envMap = this.pmremGenerator.fromEquirectangular(texture).texture as CubeT
   updateFaceImage(image: HTMLImageElement): void {
     this.faceTexture.dispose();
     this.faceTexture = this.createFaceTexture(image);
-    (this.faceMesh.material as any).map = this.faceTexture;
-    this.faceMesh.material.needsUpdate = true;
+    const mat = this.faceMesh.material as any;
+    mat.map = this.faceTexture;
+    mat.needsUpdate = true;
     
     if (this.compositePass) {
       this.compositePass.setFaceTexture(this.faceTexture);
@@ -719,8 +720,9 @@ const envMap = this.pmremGenerator.fromEquirectangular(texture).texture as CubeT
     this.faceCamera.bottom = -height / 2;
     this.faceCamera.updateProjectionMatrix();
     
-    this.faceMesh.scale.set(width / this.faceMesh.geometry.parameters.width, 
-                           height / this.faceMesh.geometry.parameters.height, 1);
+    const geo = this.faceMesh.geometry as any;
+    this.faceMesh.scale.set(width / geo.parameters.width,
+                           height / geo.parameters.height, 1);
     
     this.glassesRenderTarget?.setSize(resolution.x, resolution.y);
     this.compositePass?.resize(resolution);
@@ -743,7 +745,7 @@ const envMap = this.pmremGenerator.fromEquirectangular(texture).texture as CubeT
     // Restore original size
     this.resize(originalWidth, originalHeight);
     this.options.pixelRatio = originalPixelRatio;
-    this.renderer.setPixelRatio(originalPixelRatio);
+    this.renderer.setPixelRatio(originalPixelRatio ?? 1);
     
     return result.downloadBlob(type, quality);
   }

@@ -78,13 +78,13 @@ export default function PerfilFotoPage() {
           <div className="mt-8">
             <h2 className="text-xl font-bold text-slate-800 text-center">Vista previa en Probador Virtual</h2>
             <p className="text-center text-xs text-slate-400 mt-1">Pipeline MediaPipe directo con tu PNG 1024</p>
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <VirtualTryOn
-                glassesFrontalImageUrl={SAMPLE_GLASSES}
-                glassesTempleLeftImageUrl={SAMPLE_GLASSES}
-                glassesTempleRightImageUrl={SAMPLE_GLASSES}
-                faceSrc={photoUrl}
-              />
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex justify-center">
+              <div style={{ width: 446, height: 446 }} className="overflow-hidden rounded-xl">
+                <VirtualTryOn
+                  glassesFrontalImageUrl={SAMPLE_GLASSES}
+                  faceSrc={photoUrl}
+                />
+              </div>
             </div>
             <p className="mt-2 text-center text-xs text-slate-400 break-all">URL: {photoUrl}</p>
           </div>
