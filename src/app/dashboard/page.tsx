@@ -3,6 +3,7 @@
 import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { productosLentes, productosGafasSol } from "../data/productos";
+import { toast } from "sonner";
 import { ShoppingCart, Package, Sun, Eye, Trash2, BarChart3, Table, ClipboardList, Mail, LogOut, Plus } from "lucide-react";
 import Logo from "../components/Logo";
 import AddProductModal from "./AddProductModal";
@@ -43,7 +44,7 @@ export default function AdminDashboard() {
     }
     return {};
   });
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [form, setForm] = useState({ nombre: "", precio: "", color: "", categoria: "lentes" });
   const [authed, setAuthed] = useState(false);
   const [email, setEmail] = useState("");
@@ -117,18 +118,58 @@ export default function AdminDashboard() {
   const getProductColor = (p: { id: string; color: string }) =>
     customProducts[p.id]?.color ?? p.color;
 
-  const saveProduct = () => {
-    if (!editingId) return;
-    const updated = { ...customProducts };
-    updated[editingId] = {
-      nombre: form.nombre,
-      precio: Number(form.precio),
-      color: form.color,
-      categoria: form.categoria,
-    };
-    setCustomProducts(updated);
-    setEditingId(null);
+  const handleSave = async () => {
+    if (!editingProductId) {
+      // MODO CREAR: guardar en DB vía POST
+      try {
+        const res = await fetch("/api/productos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nombre: form.nombre,
+            precio: Number(form.precio),
+            color: form.color,
+            categoria: form.categoria,
+          }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          toast.success("Producto creado correctamente");
+        } else {
+          toast.error(data.error || "Error al crear producto");
+        }
+      } catch {
+        toast.error("Error de conexión con el servidor");
+      }
+      setShowAddModal(false);
+      setForm({ nombre: "", precio: "", color: "", categoria: "lentes" });
+      return;
+    }
+    // MODO EDITAR: actualizar en DB vía PUT
+    await fetch(`/api/productos/${editingProductId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: form.nombre,
+        precio: Number(form.precio),
+        color: form.color,
+        categoria: form.categoria,
+      }),
+    });
+    // Actualizar customProducts localStorage
+    setCustomProducts((prev) => ({
+      ...prev,
+      [editingProductId]: {
+        nombre: form.nombre,
+        precio: Number(form.precio),
+        color: form.color,
+        categoria: form.categoria,
+      },
+    }));
+    setEditingProductId(null);
+    setShowAddModal(false);
     setForm({ nombre: "", precio: "", color: "", categoria: "lentes" });
+    toast.success("Producto actualizado correctamente");
   };
 
   const resetProduct = (id: string) => {
@@ -138,14 +179,9 @@ export default function AdminDashboard() {
   };
 
   const startEdit = (p: { id: string; nombre: string; precio: number; color: string; categoria: string }) => {
-    setEditingId(p.id);
-    const overridden = customProducts[p.id];
-    setForm({
-      nombre: overridden?.nombre ?? p.nombre,
-      precio: String(overridden?.precio ?? p.precio),
-      color: overridden?.color ?? p.color,
-      categoria: overridden?.categoria ?? p.categoria,
-    });
+    setEditingProductId(p.id);
+    setShowAddModal(true);
+    // Note: initialProduct se pasa en la JSX directamente usando editingProductId
   };
 
   const COLOR_MAP: Record<string, string> = {
@@ -302,10 +338,33 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
         {showAddModal && (
           <AddProductModal
             onClose={() => setShowAddModal(false)}
-            onCreated={() => {
+            onSave={(isEdit, productId) => {
+              if (isEdit) {
+                setCustomProducts((prev) => {
+                  const updated = { ...prev };
+                  if (editingProductId && updated[editingProductId]) {
+                    updated[editingProductId] = {
+                      nombre: form.nombre,
+                      precio: Number(form.precio),
+                      color: form.color,
+                      categoria: form.categoria,
+                    };
+                  }
+                  return updated;
+                });
+                setTab("products");
+              } else {
+                setTab("products");
+              }
+              setEditingProductId(null);
               setShowAddModal(false);
-              setTab("products");
+              setForm({ nombre: "", precio: "", color: "", categoria: "lentes" });
             }}
+            initialProduct={
+              editingProductId
+                ? allProducts.find((prod) => prod.id === editingProductId)
+                : undefined
+            }
           />
         )}
 
@@ -341,7 +400,7 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
                 <tbody className="divide-y">
                   {allProducts.map((p) => (
                     <tr key={p.id} className="hover:bg-gray-50">
-                      {editingId === p.id ? (
+                      {editingProductId !== null && !showAddModal && editingProductId === p.id ? (
                         <>
                           <td className="px-4 py-3">
                             <input
@@ -386,13 +445,13 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
                           </td>
                           <td className="flex gap-2 px-4 py-3">
                             <button
-                              onClick={saveProduct}
+                              onClick={handleSave}
                               className="rounded bg-[#008294] px-3 py-1 text-xs font-medium text-white hover:bg-[#005f6b]"
                             >
                               Guardar
                             </button>
                             <button
-                              onClick={() => setEditingId(null)}
+                              onClick={() => setEditingProductId(null)}
                               className="rounded bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-300"
                             >
                               Cancelar

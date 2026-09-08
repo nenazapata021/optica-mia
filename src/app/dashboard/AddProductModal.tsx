@@ -4,12 +4,28 @@ import { useState, useEffect } from "react";
 import { X, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 
-interface AddProductModalProps {
-  onClose: () => void;
-  onCreated: () => void;
+interface ProductData {
+  id?: string;
+  name?: string;
+  price?: number;
+  image?: string;
+  categoria?: string;
+  color?: string;
+  descripcion?: string;
+  modelo?: string;
 }
 
-export default function AddProductModal({ onClose, onCreated }: AddProductModalProps) {
+interface AddProductModalProps {
+  onClose: () => void;
+  onSave?: (isEdit: boolean, productId?: string) => void;
+  initialProduct?: ProductData;
+}
+
+export default function AddProductModal({
+  onClose,
+  onSave,
+  initialProduct,
+}: AddProductModalProps) {
   const [form, setForm] = useState({
     name: "",
     price: "",
@@ -21,6 +37,36 @@ export default function AddProductModal({ onClose, onCreated }: AddProductModalP
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Determinar si es modo edición
+  const isEdit = !!initialProduct;
+  const productId = initialProduct?.id || "";
+
+  // Inicializar formulario con datos del producto si es edición
+  useEffect(() => {
+    if (isEdit && initialProduct) {
+      setForm({
+        name: initialProduct.name || "",
+        price: initialProduct.price ? String(initialProduct.price) : "",
+        image: initialProduct.image || "",
+        categoria: initialProduct.categoria || "lentes",
+        color: initialProduct.color || "",
+        descripcion: initialProduct.descripcion || "",
+        modelo: initialProduct.modelo || "",
+      });
+    } else {
+      // Formulario vacío para creación
+      setForm({
+        name: "",
+        price: "",
+        image: "",
+        categoria: "lentes",
+        color: "",
+        descripcion: "",
+        modelo: "",
+      });
+    }
+  }, [isEdit, initialProduct]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -51,35 +97,71 @@ export default function AddProductModal({ onClose, onCreated }: AddProductModalP
 
     setLoading(true);
     try {
-      const res = await fetch("/api/productos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name.trim(),
-          price: priceNum,
-          image: form.image.trim(),
-          categoria: form.categoria,
-          color: form.color.trim() || null,
-          descripcion: form.descripcion.trim() || "",
-          modelo: form.modelo.trim() || null,
-        }),
-      });
+      let res: Response;
+
+      // Si es modo edición, usar PUT a la API específica
+      if (isEdit && productId) {
+        res = await fetch(`/api/productos/${productId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: form.name.trim(),
+            price: priceNum,
+            image: form.image.trim(),
+            categoria: form.categoria,
+            color: form.color.trim() || null,
+            descripcion: form.descripcion.trim() || "",
+            modelo: form.modelo.trim() || null,
+          }),
+        });
+      } else {
+        // Modo creación, POST como antes
+        res = await fetch("/api/productos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: form.name.trim(),
+            price: priceNum,
+            image: form.image.trim(),
+            categoria: form.categoria,
+            color: form.color.trim() || null,
+            descripcion: form.descripcion.trim() || "",
+            modelo: form.modelo.trim() || null,
+          }),
+        });
+      }
 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(data.error || "No se pudo crear el producto.");
+        setError(data.error || "No se pudo guardar el producto.");
         return;
       }
 
-      toast.success("Producto creado correctamente");
-      onCreated();
+      if (isEdit) {
+        toast.success("Producto actualizado correctamente");
+        onSave?.(true, productId);
+      } else {
+        toast.success("Producto creado correctamente");
+        onSave?.(false);
+      }
     } catch {
       setError("Error de conexión con el servidor.");
     } finally {
       setLoading(false);
     }
   };
+
+  // Título dinámico según modo
+  const titleText = isEdit ? "Editar producto" : "Añadir producto";
+
+  // Texto descriptivo dinámico
+  const descriptionText = isEdit
+    ? "Modifica los datos del producto."
+    : "Completa los datos para crear un nuevo producto.";
+
+  // Texto del botón principal dinámico
+  const buttonText = isEdit ? "Guardar" : "Crear producto";
 
   return (
     <div
@@ -102,9 +184,9 @@ export default function AddProductModal({ onClose, onCreated }: AddProductModalP
         </button>
 
         <h2 id="add-product-title" className="text-xl font-bold text-slate-900 pr-8">
-          Añadir producto
+          {titleText}
         </h2>
-        <p className="mt-1 text-sm text-slate-500">Completa los datos para crear un nuevo producto.</p>
+        <p className="mt-1 text-sm text-slate-500">{descriptionText}</p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
@@ -201,7 +283,11 @@ export default function AddProductModal({ onClose, onCreated }: AddProductModalP
             />
           </div>
 
-          {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button
@@ -218,7 +304,7 @@ export default function AddProductModal({ onClose, onCreated }: AddProductModalP
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-[#008294] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#005f6b] disabled:opacity-50 transition"
             >
               {loading && <LoaderCircle size={16} className="animate-spin" />}
-              {loading ? "Guardando..." : "Crear producto"}
+              {buttonText}
             </button>
           </div>
         </form>

@@ -1,9 +1,14 @@
 import Jimp from "jimp";
-import { createRequire } from "module";
 import { program } from "commander";
 import fs from "fs";
 import path from "path";
 import sharp from "sharp";
+import * as faceapi from "@vladmandic/face-api";
+import { Canvas, Image, ImageData, loadImage } from "canvas";
+
+// face-api.js necesita que le "inyectemos" las implementaciones de Canvas/Image
+// de Node, ya que fue pensado originalmente para el navegador.
+faceapi.env.monkeyPatch({ Canvas: Canvas as any, Image: Image as any, ImageData: ImageData as any });
 
 type InpaintAlgorithm = "TELEA" | "NS";
 type SearchROI = { x1: number; y1: number; x2: number; y2: number };
@@ -11,7 +16,11 @@ type SearchROI = { x1: number; y1: number; x2: number; y2: number };
 interface ProcessingOptions {
   inputDir: string;
   outputDir: string;
-  searchROI: SearchROI;
+  searchROI?: SearchROI; // ahora es un fallback manual, ya no obligatorio
+  autoROI: boolean; // si true, calcula el ROI por cara detectada
+  modelsDir: string;
+  roiMarginX: number; // margen extra horizontal (px) alrededor de ojo-oreja
+  roiMarginY: number; // margen extra vertical (px) alrededor de ceja-ojo
   colorOverrideHSV?: [number, number, number];
   algorithm: InpaintAlgorithm;
   inpaintRadius: number;
@@ -29,8 +38,6 @@ interface ColorRange {
 }
 
 // ---- Utils ----
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const isMaskEmpty = (mask: any): boolean => {
   const count = cv.countNonZero(mask);
   return count === 0;
@@ -46,6 +53,88 @@ const initOpenCV = async () => {
   return cv;
 };
 
+// Carga los modelos de face-api.js (una sola vez, antes de procesar el lote)
+const cargarModelosFaciales = async (modelsDir: string): Promise<void> => {
+  await faceapi.nets.tinyFaceDetector.loadFromDisk(modelsDir);
+  await faceapi.nets.faceLandmark68Net.loadFromDisk(modelsDir);
+};
+
+// ---- 0. Detectar ROIs de las patillas a partir de landmarks faciales ----
+// Devuelve un ROI por cada lado (izquierdo/derecho) trazado entre la esquina
+// externa del ojo y el punto de la mandíbula más cercano a la oreja, que es
+// justamente por donde pasa la patilla real de la montura.
+const detectarROIsPatillas = async (
+  inputPath: string,
+  marginX: number,
+  marginY: number,
+  verbose: boolean
+): Promise<{ left: SearchROI; right: SearchROI } | null> => {
+  const image = await loadImage(inputPath);
+
+  const detection = await faceapi
+    .detectSingleFace(image as any, new faceapi.TinyFaceDetectorOptions())
+    .withFaceLandmarks();
+
+  if (!detection) {
+    if (verbose) {
+      console.log("  -> No se detectó ninguna cara; se usará el ROI manual (--search-roi) si fue provisto.");
+    }
+    return null;
+  }
+
+  const pts = detection.landmarks.positions;
+
+  // Índices del modelo de 68 puntos:
+  // 0-16: contorno de la mandíbula (0 = cerca de oreja derecha, 16 = cerca de oreja izquierda)
+  // 17-21: ceja derecha, 22-26: ceja izquierda
+  // 36-41: ojo derecho, 42-47: ojo izquierdo
+  const jawRightEar = pts[0];
+  const jawLeftEar = pts[16];
+  const rightEyeOuterCorner = pts[36];
+  const leftEyeOuterCorner = pts[45];
+  const rightBrow = pts.slice(17, 22);
+  const leftBrow = pts.slice(22, 27);
+
+  const minY = (points: typeof pts) => Math.min(...points.map((p) => p.y));
+
+  // ROI derecho: franja entre la esquina del ojo derecho y la oreja derecha
+  const rightTop = Math.round(minY(rightBrow) - marginY);
+  const rightBottom = Math.round(Math.max(rightEyeOuterCorner.y, jawRightEar.y) + marginY);
+  const right: SearchROI = {
+    x1: Math.round(Math.min(jawRightEar.x, rightEyeOuterCorner.x) - marginX),
+    y1: rightTop,
+    x2: Math.round(Math.max(jawRightEar.x, rightEyeOuterCorner.x) + marginX),
+    y2: rightBottom,
+  };
+
+  // ROI izquierdo: franja entre la esquina del ojo izquierdo y la oreja izquierda
+  const leftTop = Math.round(minY(leftBrow) - marginY);
+  const leftBottom = Math.round(Math.max(leftEyeOuterCorner.y, jawLeftEar.y) + marginY);
+  const left: SearchROI = {
+    x1: Math.round(Math.min(leftEyeOuterCorner.x, jawLeftEar.x) - marginX),
+    y1: leftTop,
+    x2: Math.round(Math.max(leftEyeOuterCorner.x, jawLeftEar.x) + marginX),
+    y2: leftBottom,
+  };
+
+  // Clamp a los límites de la imagen
+  const clamp = (roi: SearchROI): SearchROI => ({
+    x1: Math.max(0, roi.x1),
+    y1: Math.max(0, roi.y1),
+    x2: Math.min(image.width, roi.x2),
+    y2: Math.min(image.height, roi.y2),
+  });
+
+  const result = { left: clamp(left), right: clamp(right) };
+
+  if (verbose) {
+    console.log(`  -> ROI derecho: ${JSON.stringify(result.right)}`);
+    console.log(`  -> ROI izquierdo: ${JSON.stringify(result.left)}`);
+  }
+
+  return result;
+};
+
 // ---- 1. Detectar color de montura (auto desde puente/lentes) ----
 const detectarColorMontura = async (
   img: any,
@@ -55,28 +144,17 @@ const detectarColorMontura = async (
   const h = img.cols;
   const w = img.rows;
 
-  // ROI por defecto: zona central superior (puente entre lentes)
-  // ~40% ancho central, 20% alto superior
   const roiX1 = Math.round(w * 0.3);
   const roiY1 = Math.round(h * 0.15);
   const roiX2 = Math.round(w * 0.7);
   const roiY2 = Math.round(h * 0.35);
 
-  const roi = new cvAny.Mat(img.rows, img.cols, cvAny.CV_8UC4);
-  img.copyTo(roi);
+  const roiRect = new cvAny.Rect(roiX1, roiY1, roiX2 - roiX1, roiY2 - roiY1);
+  const roiROI = img.roi(roiRect);
 
-  const roiHeight = roiY2 - roiY1;
-  const roiWidth = roiX2 - roiX1;
-  const roiMask = new cvAny.Mat(roiHeight, roiWidth, cvAny.CV_8UC1, new cvAny.Scalar(0));
-  const roiOffset = new cvAny.Point(roiX1, roiY1);
-  const roiROI = new cvAny.Mat();
-  roi(roiROI, roiMask, roiOffset);
-
-  // Convertir ROI a HSV
   const hsvROI = new cvAny.Mat();
   cvAny.cvtColor(roiROI, hsvROI, cvAny.COLOR_BGR2HSV);
 
-  // Calcular histograma 2D (H, S)
   const hist = cvAny.calcHist(
     [hsvROI],
     [0, 1],
@@ -86,14 +164,13 @@ const detectarColorMontura = async (
   );
   cvAny.normalize(hist, hist, 0, 1, cvAny.NORM_MINMAX);
 
-  // Encontrar el pico dominante
   let maxVal = 0;
   let maxH = 90;
   let maxS = 255;
 
   for (let h = 0; h < 180; h++) {
     for (let s = 0; s < 256; s++) {
-      const val = hist.at<number>(h, s);
+      const val = hist.data32F[h * hist.cols + s];
       if (val > maxVal) {
         maxVal = val;
         maxH = h;
@@ -102,12 +179,11 @@ const detectarColorMontura = async (
     }
   }
 
-  // Ranges tolerantes
   const hRange = 15;
   const sRange = 40;
   const vRange = 50;
 
-const colorRange: ColorRange = {
+  const colorRange: ColorRange = {
     h: maxH,
     s: maxS,
     vRange: vRange,
@@ -115,32 +191,29 @@ const colorRange: ColorRange = {
     sRange,
   };
 
-  // Aplicar override por CLI si se proporciona
   if (override) {
     colorRange.h = override[0];
     colorRange.s = override[1];
     colorRange.vRange = override[2];
   }
 
-  // Cleanup
   hist.delete();
   hsvROI.delete();
   roiROI.delete();
-  roiMask.delete();
-  roi.delete();
 
   return colorRange;
 };
 
 // ---- 2. Generar máscara de la patilla ----
+// Ahora acepta un arreglo de ROIs (uno por lado) en vez de uno solo,
+// para poder restringir la búsqueda a ambas patillas por separado.
 const generarMascaraPatilla = async (
   img: any,
   colorRange: ColorRange,
-  searchROI: SearchROI,
+  searchROIs: SearchROI[],
   dilateKernelSize: number,
   cvAny: any
 ): Promise<{ mask: any; colorUsed: [number, number, number]; hasPatillaPixels: boolean }> => {
-  // Crear máscara base basada en color HSV
   const hsv = new cvAny.Mat();
   cvAny.cvtColor(img, hsv, cvAny.COLOR_BGR2HSV);
 
@@ -159,7 +232,7 @@ const generarMascaraPatilla = async (
   const colorMask = new cvAny.Mat();
   cvAny.inRange(hsv, lowerBound, upperBound, colorMask);
 
-  // Restringir a región de búsqueda (searchROI absoluta)
+  // Restringir a las regiones de búsqueda (una por cada patilla)
   const searchMask = new cvAny.Mat(
     img.rows,
     img.cols,
@@ -167,16 +240,19 @@ const generarMascaraPatilla = async (
     new cvAny.Scalar(0)
   );
 
-  const sr = searchROI;
-  const searchWidth = sr.x2 - sr.x1;
-  const searchHeight = sr.y2 - sr.y1;
-  searchMask.setTo(new cvAny.Scalar(255), new cvAny.Rect(sr.x1, sr.y1, searchWidth, searchHeight));
+  for (const sr of searchROIs) {
+    const searchWidth = sr.x2 - sr.x1;
+    const searchHeight = sr.y2 - sr.y1;
+    if (searchWidth <= 0 || searchHeight <= 0) continue;
+    searchMask.setTo(
+      new cvAny.Scalar(255),
+      new cvAny.Rect(sr.x1, sr.y1, searchWidth, searchHeight)
+    );
+  }
 
-  // Aplicar máscara de búsqueda sobre el color mask
   const maskedColor = new cvAny.Mat();
   cvAny.bitwise_and(colorMask, colorMask, maskedColor, searchMask);
 
-  // Operaciones morfológicas: close para unir fragmentos, dilate para cubrir bordes
   const kernel = cvAny.getStructuringElement(
     cvAny.MORPH_RECT,
     new cvAny.Size(dilateKernelSize, dilateKernelSize),
@@ -189,15 +265,19 @@ const generarMascaraPatilla = async (
   const dilated = new cvAny.Mat();
   cvAny.dilate(closed, dilated, kernel, new cvAny.Point(-1, -1), 1);
 
-  // Verificar si hay píxeles de patilla en la máscara
-  const hasPatillaPixels = !isMaskEmpty(dilated);
+  // Suavizar bordes de la máscara para evitar un "halo" duro tras el inpaint
+  const feathered = new cvAny.Mat();
+  cvAny.GaussianBlur(dilated, feathered, new cvAny.Size(5, 5), 0);
+  cvAny.threshold(feathered, feathered, 60, 255, cvAny.THRESH_BINARY);
 
-  // Cleanup temporales
+  const hasPatillaPixels = !isMaskEmpty(feathered);
+
   hsv.delete();
   colorMask.delete();
   maskedColor.delete();
   searchMask.delete();
   closed.delete();
+  dilated.delete();
 
   const colorUsed: [number, number, number] = [
     colorRange.h,
@@ -205,7 +285,7 @@ const generarMascaraPatilla = async (
     colorRange.vRange,
   ];
 
-  return { mask: dilated, colorUsed, hasPatillaPixels };
+  return { mask: feathered, colorUsed, hasPatillaPixels };
 };
 
 // ---- 3. Aplicar inpainting ----
@@ -224,7 +304,6 @@ const quitarPatilla = async (
   const result = new cvAny.Mat();
   cvAny.inpaint(img, mask, inpaintRadius, result, algorithmFlag);
 
-  // Cleanup mask
   mask.delete();
 
   return result;
@@ -249,17 +328,11 @@ const crearComparacion = async (
   outputPath: string
 ): Promise<void> => {
   const [originalBuffer, processedBuffer] = await Promise.all([
-    sharp(originalPath)
-      .resize({ width: 800 })
-      .png()
-      .toBuffer(),
-    sharp(processedPath)
-      .resize({ width: 800 })
-      .png()
-      .toBuffer(),
+    sharp(originalPath).resize({ width: 800 }).png().toBuffer(),
+    sharp(processedPath).resize({ width: 800 }).png().toBuffer(),
   ]);
 
-  const combined = await sharp({
+  await sharp({
     create: {
       width: 1600,
       height: 800,
@@ -268,8 +341,8 @@ const crearComparacion = async (
     },
   })
     .composite([
-      { input: originalBuffer, left: 0 },
-      { input: processedBuffer, left: 800 },
+      { input: originalBuffer, left: 0, top: 0 },
+      { input: processedBuffer, left: 800, top: 0 },
     ])
     .toFile(outputPath);
 };
@@ -286,21 +359,45 @@ const procesarImagen = async (
   }
 
   try {
-    // Leer imagen con Jimp
     const jimpImg = await Jimp.read(inputPath);
-
-    // Convertir a OpenCV Mat
-    const mat = matFromImage(jimpImg);
+    const mat = matFromImage(jimpImg, cvAny);
 
     try {
-      // Detectar color de montura (automático, con posible override CLI)
+      // Calcular ROIs de búsqueda: automático por landmarks, o manual como fallback
+      let searchROIs: SearchROI[] = [];
+
+      if (options.autoROI) {
+        const rois = await detectarROIsPatillas(
+          inputPath,
+          options.roiMarginX,
+          options.roiMarginY,
+          options.verbose
+        );
+        if (rois) {
+          searchROIs = [rois.left, rois.right];
+        }
+      }
+
+      if (searchROIs.length === 0) {
+        if (options.searchROI) {
+          searchROIs = [options.searchROI];
+        } else {
+          if (options.verbose) {
+            console.log(`  -> Sin ROI disponible (ni cara detectada ni --search-roi manual). Copiando original.`);
+          }
+          const buffer = await jimpImg.getBufferAsync(Jimp.MIME_JPEG);
+          fs.writeFileSync(outputPath, buffer);
+          mat.delete();
+          return;
+        }
+      }
+
       const colorRange = await detectarColorMontura(mat, options.colorOverrideHSV, cvAny);
 
-      // Generar máscara de la patilla
       const { mask, hasPatillaPixels } = await generarMascaraPatilla(
         mat,
         colorRange,
-        options.searchROI,
+        searchROIs,
         options.dilateKernel,
         cvAny
       );
@@ -309,14 +406,12 @@ const procesarImagen = async (
         if (options.verbose) {
           console.log(`  -> No se detectaron píxeles de patilla. Copiando original sin cambios.`);
         }
-        // Copiar original sin cambios
         const buffer = await jimpImg.getBufferAsync(Jimp.MIME_JPEG);
         fs.writeFileSync(outputPath, buffer);
         mat.delete();
         return;
       }
 
-      // Aplicar inpainting
       const result = await quitarPatilla(
         mat,
         mask,
@@ -325,30 +420,19 @@ const procesarImagen = async (
         cvAny
       );
 
-      // Guardar resultado - convertir de BGR a RGB
-      const resultMat = result;
       const rgbMat = new cvAny.Mat();
-      cvAny.cvtColor(resultMat, rgbMat, cvAny.COLOR_BGR2RGB);
+      cvAny.cvtColor(result, rgbMat, cvAny.COLOR_BGR2RGB);
 
-      // Convertir a Jimp y guardar
       const bitmap = rgbMat.toBitmap() as any;
-      const outJimp = new Jimp(
-        rgbMat.cols,
-        rgbMat.rows,
-        bitmap.data as any
-      );
+      const outJimp = new Jimp(rgbMat.cols, rgbMat.rows, bitmap.data as any);
       await outJimp.writeAsync(outputPath);
 
-      // Cleanup
-      resultMat.delete();
       rgbMat.delete();
       result.delete();
-
     } finally {
       mat.delete();
     }
 
-    // Generar imagen de comparación lado a lado si se solicita
     if (options.compareDir) {
       const baseName = path.basename(inputPath, path.extname(inputPath));
       const comparisonPath = path.join(
@@ -367,10 +451,8 @@ const procesarImagen = async (
         }
       }
     }
-
   } catch (error) {
     console.error(`Error procesando ${inputPath}:`, error);
-    // Copiar original en caso de error
     try {
       const buffer = await Jimp.read(inputPath).then((img) => img.getBufferAsync(Jimp.MIME_JPEG));
       fs.writeFileSync(outputPath, buffer);
@@ -382,7 +464,6 @@ const procesarImagen = async (
 
 // ---- 7. Procesar lote de imágenes ----
 const procesarLote = async (options: ProcessingOptions, cvAny: any): Promise<void> => {
-  // Asegurar que directorios de salida existen
   if (!fs.existsSync(options.outputDir)) {
     fs.mkdirSync(options.outputDir, { recursive: true });
   }
@@ -390,14 +471,10 @@ const procesarLote = async (options: ProcessingOptions, cvAny: any): Promise<voi
     fs.mkdirSync(options.compareDir, { recursive: true });
   }
 
-  // Leer todas las imágenes del directorio de entrada
   const supportedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
   const files = fs
     .readdirSync(options.inputDir)
-    .filter((file) => {
-      const ext = path.extname(file).toLowerCase();
-      return supportedExtensions.includes(ext);
-    });
+    .filter((file) => supportedExtensions.includes(path.extname(file).toLowerCase()));
 
   if (files.length === 0) {
     console.log(`No se encontraron imágenes en ${options.inputDir}`);
@@ -408,14 +485,12 @@ const procesarLote = async (options: ProcessingOptions, cvAny: any): Promise<voi
     console.log(`Encontradas ${files.length} imágenes para procesar.`);
   }
 
-  // Procesar cada archivo
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const inputPath = path.join(options.inputDir, file);
     const ext = path.extname(file);
     const nameWithoutExt = path.basename(file, ext);
-    const outputFileName = `${nameWithoutExt}${ext}`;
-    const outputPath = path.join(options.outputDir, outputFileName);
+    const outputPath = path.join(options.outputDir, `${nameWithoutExt}${ext}`);
 
     await procesarImagen(inputPath, outputPath, options, cvAny);
 
@@ -431,7 +506,6 @@ const procesarLote = async (options: ProcessingOptions, cvAny: any): Promise<voi
 
 // ---- CLI (commander) ----
 const main = async () => {
-  // Initialize OpenCV first
   await initOpenCV();
 
   program
@@ -439,67 +513,61 @@ const main = async () => {
     .description(
       "Script para eliminar patillas visibles de monturas de gafas en fotos de catálogo"
     )
-    .requiredOption(
-      "--input <dir>",
-      "Directorio de imágenes de entrada"
+    .requiredOption("--input <dir>", "Directorio de imágenes de entrada")
+    .requiredOption("--output <dir>", "Directorio de imágenes de salida")
+    .option(
+      "--models-dir <dir>",
+      "Directorio con los modelos de face-api.js (tiny_face_detector + face_landmark_68)",
+      "./models"
     )
-    .requiredOption(
-      "--output <dir>",
-      "Directorio de imágenes de salida"
+    .option(
+      "--no-auto-roi",
+      "Desactivar la detección automática de ROI por landmarks faciales y usar solo --search-roi"
     )
     .option(
       "--search-roi <x1,y1,x2,y2>",
-      "Región de búsqueda absoluta (x1,y1,x2,y2) para la patilla",
-      "0,0,1200,400"
-    )
-    .option(
-      "--color-hsv <h,s,v>",
-      "Color HSV aproximado de la montura (override auto-detección)",
+      "ROI manual de respaldo si no se detecta cara o si --no-auto-roi está activo",
       undefined
     )
     .option(
-      "--algorithm <TELEA|NS>",
-      "Algoritmo de inpainting",
-      "TELEA"
+      "--roi-margin-x <number>",
+      "Margen horizontal (px) alrededor de la franja ojo-oreja",
+      "15"
     )
     .option(
-      "--inpaint-radius <number>",
-      "Radio de vecindad para inpainting",
-      "3"
+      "--roi-margin-y <number>",
+      "Margen vertical (px) alrededor de la franja ceja-ojo",
+      "20"
     )
-    .option(
-      "--dilate-kernel <number>",
-      "Tamaño del kernel para dilatación morfológica",
-      "5"
-    )
-    .option(
-      "--compare-dir <dir>",
-      "Directorio para guardar imágenes comparativas antes/después",
-      undefined
-    )
-    .option(
-      "--verbose",
-      "Mostrar información detallada en consola",
-      false
-    )
+    .option("--color-hsv <h,s,v>", "Color HSV aproximado de la montura (override auto-detección)", undefined)
+    .option("--algorithm <TELEA|NS>", "Algoritmo de inpainting", "TELEA")
+    .option("--inpaint-radius <number>", "Radio de vecindad para inpainting", "5")
+    .option("--dilate-kernel <number>", "Tamaño del kernel para dilatación morfológica", "5")
+    .option("--compare-dir <dir>", "Directorio para guardar imágenes comparativas antes/después", undefined)
+    .option("--verbose", "Mostrar información detallada en consola", false)
     .parse();
 
   const opts = program.opts();
 
-  // Parsear search-roi
-  const [x1, y1, x2, y2] = opts.searchROI.split(",").map(Number);
-  const searchROI: SearchROI = { x1, y1, x2, y2 };
+  let searchROI: SearchROI | undefined;
+  if (opts.searchRoi) {
+    const [x1, y1, x2, y2] = opts.searchRoi.split(",").map(Number);
+    searchROI = { x1, y1, x2, y2 };
+  }
 
-  // Parsear color HSV si se proporciona
   let colorOverride: [number, number, number] | undefined;
-  if (opts.colorHSV) {
-    colorOverride = opts.colorHSV.split(",").map(Number) as [number, number, number];
+  if (opts.colorHsv) {
+    colorOverride = opts.colorHsv.split(",").map(Number) as [number, number, number];
   }
 
   const options: ProcessingOptions = {
     inputDir: opts.input,
     outputDir: opts.output,
     searchROI,
+    autoROI: opts.autoRoi !== false,
+    modelsDir: opts.modelsDir,
+    roiMarginX: Number(opts.roiMarginX),
+    roiMarginY: Number(opts.roiMarginY),
     colorOverrideHSV: colorOverride,
     algorithm: opts.algorithm as InpaintAlgorithm,
     inpaintRadius: Number(opts.inpaintRadius),
@@ -510,27 +578,35 @@ const main = async () => {
 
   if (options.verbose) {
     console.log("=== Óptica Mía - Quitar Patillas ===");
-    console.log("Opciones de configuración:");
     console.log(`  Input: ${options.inputDir}`);
     console.log(`  Output: ${options.outputDir}`);
-    console.log(`  Search ROI: ${JSON.stringify(options.searchROI)}`);
+    console.log(`  Auto ROI (landmarks): ${options.autoROI}`);
+    console.log(`  Search ROI manual (fallback): ${options.searchROI ? JSON.stringify(options.searchROI) : "no provisto"}`);
     console.log(`  Color HSV override: ${options.colorOverrideHSV ? options.colorOverrideHSV : "auto"}`);
     console.log(`  Algorithm: ${options.algorithm}`);
     console.log(`  Inpaint radius: ${options.inpaintRadius}`);
     console.log(`  Dilate kernel: ${options.dilateKernel}`);
-    if (options.compareDir) {
-      console.log(`  Compare dir: ${options.compareDir}`);
-    }
+    if (options.compareDir) console.log(`  Compare dir: ${options.compareDir}`);
     console.log("======================================\n");
   }
 
-  // Verificar que el directorio de entrada existe
   if (!fs.existsSync(options.inputDir)) {
     console.error(`Error: El directorio de entrada no existe: ${options.inputDir}`);
     process.exit(1);
   }
 
-  // Ejecutar procesamiento por lotes
+  if (options.autoROI) {
+    if (!fs.existsSync(options.modelsDir)) {
+      console.error(
+        `Error: --auto-roi está activo pero no existe el directorio de modelos: ${options.modelsDir}\n` +
+        `Descarga los modelos "tiny_face_detector" y "face_landmark_68" desde:\n` +
+        `https://github.com/vladmandic/face-api/tree/master/model`
+      );
+      process.exit(1);
+    }
+    await cargarModelosFaciales(options.modelsDir);
+  }
+
   await procesarLote(options, cv);
 };
 

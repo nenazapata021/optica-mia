@@ -1,0 +1,18 @@
+[
+    {
+      "weightsManifest": [
+        {
+          "paths": [
+            "face_landmark_68_model-shard1"
+          ],
+          "weights": [
+            {
+              "name": "conv1/weights",
+              "shape": [3, 3, 3, 16],
+              "dtype": "float32"
+            }
+          ]
+        }
+      ]
+    }
+  ]
