@@ -3,10 +3,11 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const product = await prisma.producto.findUnique({
-    where: { id: params.id },
+  const { id } = await params;
+  const product = await prisma.product.findUnique({
+    where: { id },
   });
 
   return NextResponse.json(product);
@@ -14,13 +15,14 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const { name, price, image, categoria, color, descripcion, modelo } =
     await request.json();
 
-  const product = await prisma.producto.update({
-    where: { id: params.id },
+  const product = await prisma.product.update({
+    where: { id },
     data: {
       name,
       price,
