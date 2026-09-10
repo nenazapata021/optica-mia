@@ -84,9 +84,23 @@ model Order {
   id              String      @id @default(cuid())
   customerId      String
   customer        Customer    @relation(fields: [customerId], references: [id])
-  total           Float
+
+  // Datos del cliente y monto (si no existen ya en la BD)
+  totalInCents    Float
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  customerCity    String
+
+  // Validación logística: solo se vende dentro de Medellín/Itagüí
+  cityValidated   Boolean     @default(false)
+
+  // Campos de pago (unificados para Wompi/Addi/Sistecredito)
+  paymentProvider String?     // Enum: Wompi | Addi | Sistecredito
+  paymentReference String?    // Referencia única del proveedor
+  paymentStatus   String?     // Enum: pending | approved | declined | expired | error
+
   status          String      @default("pendiente")
-  paymentMethod   String?
   transactionId   String?     @unique
   wompiStatus     String?
   createdAt       DateTime    @default(now())

@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     if (!customerId || !items?.length) {
       return NextResponse.json({ error: "customerId e items requeridos" }, { status: 400 });
     }
-    const total = items.reduce((sum: number, item: { price: number; quantity: number }) => sum + item.price * item.quantity, 0);
+    const totalInCents = Math.round(items.reduce((sum: number, item: { price: number; quantity: number }) => sum + item.price * item.quantity, 0) * 100);
     const productIds = items.map((item: { productId: string }) => item.productId);
     const existingProducts = await prisma.product.findMany({
       where: { id: { in: productIds } },
@@ -30,7 +30,11 @@ export async function POST(request: Request) {
     const order = await prisma.order.create({
       data: {
         customerId,
-        total,
+        totalInCents,
+        customerName: "",
+        customerEmail: "",
+        customerPhone: "",
+        customerCity: "",
         items: {
           create: items.map((item: { productId: string; quantity: number; price: number }) => ({
             productId: item.productId,
@@ -41,7 +45,7 @@ export async function POST(request: Request) {
       },
       include: { items: true },
     });
-    return NextResponse.json({ id: order.id, total: order.total }, { status: 201 });
+    return NextResponse.json({ id: order.id, total: order.totalInCents / 100 }, { status: 201 });
   } catch (error) {
     console.error("Orders POST error:", error);
     return NextResponse.json({ error: "Error al crear orden" }, { status: 500 });

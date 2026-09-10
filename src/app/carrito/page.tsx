@@ -13,24 +13,50 @@ const LS_CUSTOMER_KEY = "optica-mia-customer-data";
 
 const COLOR_MAP: Record<string, string> = {
   "vino": "#6E2A35",
-  "marr\u00f3n rosado": "#A67F72",
+  "marrón rosado": "#A67F72",
   "dorado": "#D4AF37",
   "dorado claro": "#E6C88C",
-  "rosa palo transl\u00fadecido": "#E8CFC4",
-  "rojo vino transl\u00fadecido": "#B4485A",
+  "rosa palo translúcido": "#E8CFC4",
+  "rojo vino translúcido": "#B4485A",
   "carey/habana": "#A5673F",
   "negro": "#1A1A1A",
   "plateado": "#C7C9CC",
-  "azul transl\u00fadecido": "#6F8FA8",
-  "caf\u00e9": "#6B4A3A",
+  "azul translúcido": "#6F8FA8",
+  "café": "#6B4A3A",
   "negro mate": "#262626",
-  "gris transl\u00fadecido": "#B8B8B8",
+  "gris translúcido": "#B8B8B8",
   "dorado rosado": "#D9A79C",
   "negro brillante": "#0D0D0D",
 };
 
+// IDs de producto conocidos desde el catálogo en src/app/data/productos.js
+// Esto incluye tanto los lentes como las gafas de sol
+const CATALOG_PRODUCT_IDS = new Set([
+  "foto1", "foto2", "foto3", "foto4", "foto5", "foto6", "foto7", "foto8",
+  "foto9", "foto10", "foto11", "foto12", "foto13", "foto14", "foto15",
+  "foto16", "foto17", "foto18", "foto19", "foto20", "foto21",
+  "gafas-de-sol1", "gafas-de-sol2", "gafas-de-sol3", "gafas-de-sol4",
+  "gafas-de-sol5", "gafas-de-sol6", "gafas-redondas-negras",
+]);
+
 function colorHex(nombre: string): string {
   return COLOR_MAP[nombre.toLowerCase().trim()] || "#CCCCCC";
+}
+
+function esIDProductoValido(id: string): boolean {
+  // Verifica si el ID es un ID de producto conocido del catálogo
+  // (foto1-foto21 o gafas-de-sol*)
+  return CATALOG_PRODUCT_IDS.has(id.toLowerCase());
+}
+
+function obtenerIDsNoValidos(cartItems: CartItem[]): string[] {
+  const noValidos: string[] = [];
+  cartItems.forEach((item) => {
+    if (!esIDProductoValido(item.id)) {
+      noValidos.push(item.id);
+    }
+  });
+  return noValidos;
 }
 
 function SelectorColor({
@@ -124,6 +150,24 @@ export default function CarritoPage() {
       return;
     }
     const customerData = JSON.parse(raw);
+    
+    // Validación previa: verificar que todos los productos del carrito sean válidos
+    const idsNoValidos = obtenerIDsNoValidos(cartItems);
+    if (idsNoValidos.length > 0) {
+      // Mostrar error claro al usuario
+      // Los IDs no válidos podrían ser nombres de archivo en lugar de IDs de producto
+      const mensaje = idsNoValidos.length === 1
+        ? `El producto con ID "${idsNoValidos[0]}" no es un ID de producto reconocido. `
+        : `Los siguientes IDs de producto no son reconocidos: ${idsNoValidos.join(", ")}. ` +
+          "Por favor verifique que sus productos estén en el catálogo.";
+      
+      // En un entorno de producción, aquí podríamos mostrar un modal o toast
+      console.error("Error de validación de productos:", mensaje);
+      alert(mensaje + " Por favor, regrese al catálogo y vuelva a agregar los productos.");
+      return;
+    }
+    
+    const customerId = customerData.id;
     setPaymentCustomer({
       customerId: customerData.id,
       info: {
