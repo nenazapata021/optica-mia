@@ -49,6 +49,16 @@ export async function GET(request: NextRequest) {
         where: { transactionId },
         data: { status: "confirmado" },
       });
+    } else if (wompiTx.data.status === "DECLINED") {
+      await prisma.order.updateMany({
+        where: { transactionId },
+        data: { status: "rechazado" },
+      });
+    } else if (wompiTx.data.status === "ERROR") {
+      await prisma.order.updateMany({
+        where: { transactionId },
+        data: { status: "error" },
+      });
     }
 
     return NextResponse.json({ transaction: wompiTx.data });

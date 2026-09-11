@@ -59,7 +59,7 @@ export class WompiApiError extends Error {
   }
 }
 
-export function getWompiErrorMessage(error: unknown): string {
+export function getWompiErrorMessage(error: unknown, method?: "NEQUI" | "ADDI" | "SISTECREDITO"): string {
   if (error instanceof WompiApiError) {
     const body = error.body as
       | { error?: { reason?: string; messages?: Record<string, unknown> } }
@@ -68,17 +68,19 @@ export function getWompiErrorMessage(error: unknown): string {
       ? Object.values(body.error.messages)[0]
       : undefined;
     if (Array.isArray(firstMessage) && firstMessage.length) {
-      return String(firstMessage[0]);
+      return `${method ? `${method}: ` : ""}${String(firstMessage[0])}`;
     }
     if (typeof firstMessage === "string") {
-      return firstMessage;
+      return `${method ? `${method}: ` : ""}${firstMessage}`;
     }
     if (typeof body?.error?.reason === "string" && body.error.reason) {
-      return body.error.reason;
+      return `${method ? `${method}: ` : ""}${body.error.reason}`;
     }
     return `Wompi API error (${error.status})`;
   }
-  return error instanceof Error ? error.message : "Error al procesar el pago";
+  return error instanceof Error 
+    ? `${method ? `${method}: ` : ""}${error.message}` 
+    : "Error al procesar el pago";
 }
 
 async function wompiFetch<T>(

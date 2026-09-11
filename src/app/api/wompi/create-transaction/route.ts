@@ -102,44 +102,34 @@ export async function POST(request: Request) {
 
     const productIds = items.map((item: { productId: string }) => item.productId);
 
-    // Validación flexible: aceptar tanto IDs de Prisma como IDs del catálogo
-    let missingIds: string[] = [];
-
-    // Primero, intentar validar IDs no-catálogo contra la BD
+    // Validación: solo fallar si hay IDs que no son del catálogo conocido
+    // y tampoco existen en la base de datos Prisma
     const nonCatalogIds = productIds.filter((id) => !isCatalogProductId(id));
+
     if (nonCatalogIds.length > 0) {
       const existingProducts = await prisma.product.findMany({
         where: { id: { in: nonCatalogIds } },
         select: { id: true },
       });
       const existingIds = new Set(existingProducts.map((p) => p.id));
-      missingIds = [...new Set(nonCatalogIds)].filter((id) => !existingIds.has(id));
-    }
-
-    // Para IDs del catálogo ("foto1", "gafas-de-sol1", etc.), 
-    // no fallamos si no se encuentran en la BD inmediatamente.
-    // El usuario podría estar usando el catálogo estándar. 
-    // Si todos los IDs son del catálogo conocido, permitimos la transacción.
-    const allKnownCatalogIds = productIds.every((id) => isCatalogProductId(id));
-    if (allKnownCatalogIds && missingIds.length === 0) {
-      // Todos son IDs del catálogo conocido - permitir paso
-      missingIds = [];
-    } else if (allKnownCatalogIds && missingIds.length > 0) {
-      // Algunos IDs del catálogo no se encontraron en BD - aún así permitir
-      // pero reportar cuales faltan para reporting purposes
-      // (Wompi y el sistema de orden manejarán los items de todas formas)
-      missingIds = [];
-    }
-
-    if (missingIds.length > 0 && !allKnownCatalogIds) {
-      return NextResponse.json(
-        {
-          error: `Productos inexistentes en el catálogo: ${missingIds.join(", ")}`,
-          missingIds,
-        },
-        { status: 400 }
+      const missingIds = [...new Set(nonCatalogIds)].filter(
+        (id) => !existingIds.has(id)
       );
+
+      // Si hay IDs no catálogo que no están en la BD, retornar error
+      if (missingIds.length > 0) {
+        return NextResponse.json(
+          {
+            error: `Productos inexistentes en el catálogo: ${missingIds.join(", ")}`,
+            missingIds,
+          },
+          { status: 400 }
+        );
+      }
     }
+    // Si todos son IDs del catálogo conocido (foto1, grafas-de-sol*, etc.)
+    // o si todos los no-catálogo existen en BD → permitir transacción
+    // (Wompi validará sus propios product IDs en su sistema)
 
     const reference = `MIA-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
 
@@ -223,7 +213,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Wompi create-transaction error:", error);
     return NextResponse.json(
-      { error: getWompiErrorMessage(error) },
+      { error: getWompiErrorMessage(error, paymentMethod.type) },
       { status: 500 }
     );
   }

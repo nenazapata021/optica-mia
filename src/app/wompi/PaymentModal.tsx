@@ -96,6 +96,16 @@ export default function PaymentModal({
     setStep("processing");
     setErrorMsg("");
 
+    // Validación especial para Nequi: requiere número de teléfono
+    if (method === "NEQUI" && 
+        (!customerInfo.phone_number || customerInfo.phone_number.trim() === "")) {
+      setErrorMsg(
+        "Por favor, ingresa tu número de teléfono para pagar con Nequi"
+      );
+      setStep("error");
+      return;
+    }
+
     try {
       const items = cartItems.map((item) => ({
         productId: item.id,
@@ -151,11 +161,20 @@ export default function PaymentModal({
       if (data.transaction.status === "APPROVED") {
         setStep("success");
         clearCart();
+      } else if (data.transaction.status === "DECLINED") {
+        setErrorMsg(
+          selectedMethod === "ADDI"
+            ? "Addi rechazó la transacción. Intenta con otro método o contacta soporte."
+            : selectedMethod === "SISTECREDITO"
+              ? "Sistecredito rechazó la transacción. Intenta con otro método o contacta soporte."
+              : "El pago fue rechazado"
+        );
+        setStep("error");
       }
     } catch {
       // silent
     }
-  }, [transactionId, clearCart]);
+  }, [transactionId, clearCart, selectedMethod]);
 
   useEffect(() => {
     if (step !== "qr" || !transactionId) return;
@@ -337,7 +356,15 @@ export default function PaymentModal({
             <h3 className="mt-4 text-xl font-bold text-gray-800">
               Error en el pago
             </h3>
-            <p className="mt-2 text-sm text-red-500">{errorMsg}</p>
+            <p className="mt-2 text-sm text-red-500">
+              {errorMsg 
+                ? errorMsg.includes("Nequi") 
+                  ? "Verifica tu número de teléfono y vuelve a intentarlo." 
+                  : errorMsg.includes("rechazado") 
+                    ? `Tu pago con ${selectedMethod === "ADDI" ? "Addi" : "Sistecredito"} fue rechazado. Intenta con otro método.` 
+                    : errorMsg 
+                    : "Error al procesar el pago"}
+            </p>
             <button
               onClick={() => setStep("select")}
               className="mt-6 rounded-lg bg-[#D4AF37] px-6 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-[#C39C4E]"
