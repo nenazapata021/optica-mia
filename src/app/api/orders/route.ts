@@ -1,6 +1,42 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export async function GET() {
+  try {
+    const orders = await prisma.order.findMany({
+      include: {
+        items: {
+          include: { product: { select: { name: true } } },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const mapped = orders.map((o) => ({
+      id: o.id,
+      date: o.createdAt,
+      customerName: o.customerName || "Sin nombre",
+      customerEmail: o.customerEmail || "",
+      customerPhone: o.customerPhone || "",
+      customerCity: o.customerCity || "",
+      total: o.totalInCents / 100,
+      status: o.status,
+      paymentProvider: o.paymentProvider || "",
+      paymentStatus: o.paymentStatus || "",
+      items: o.items.map((i) => ({
+        productName: i.product?.name || i.productId,
+        quantity: i.quantity,
+        price: i.price,
+      })),
+    }));
+
+    return NextResponse.json({ orders: mapped });
+  } catch (error) {
+    console.error("Orders GET error:", error);
+    return NextResponse.json({ error: "Error al obtener órdenes" }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const {

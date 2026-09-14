@@ -155,7 +155,7 @@ export async function createTransaction(
     payment_method: {
       type: paymentMethod.type,
       ...(paymentMethod.type === "NEQUI"
-        ? { financial_institution_code: "1507" }
+        ? { financial_institution_code: "1507", phone_number: customer.phone_number }
         : {}),
       ...(paymentMethod.type === "ADDI" && paymentMethod.installments
         ? { installments: paymentMethod.installments }

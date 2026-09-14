@@ -10,12 +10,24 @@ import AddProductModal from "./AddProductModal";
 
 const AUTH_KEY = "optica-mia-auth";
 
-interface Order {
+interface DbOrderItem {
+  productName: string;
+  quantity: number;
+  price: number;
+}
+
+interface DbOrder {
   id: string;
-  items: { name: string; quantity: number; price: number }[];
-  total: number;
   date: string;
-  customer: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerCity: string;
+  total: number;
+  status: string;
+  paymentProvider: string;
+  paymentStatus: string;
+  items: DbOrderItem[];
 }
 
 type Tab = "stats" | "products" | "orders";
@@ -29,14 +41,8 @@ const NAV_ITEMS: { key: Tab; label: string; icon: typeof BarChart3 }[] = [
 export default function AdminDashboard() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("stats");
-  const [orders, setOrders] = useState<Order[]>(() => {
-    if (typeof window !== "undefined") {
-      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-      const saved = localStorage.getItem("optica-mia-orders");
-      if (saved && cart.length > 0) return JSON.parse(saved);
-    }
-    return [];
-  });
+  const [orders, setOrders] = useState<DbOrder[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [customProducts, setCustomProducts] = useState<Record<string, { nombre: string; precio: number; color: string; categoria: string }>>(() => {
     if (typeof window !== "undefined") {
       const savedProducts = localStorage.getItem("optica-mia-custom-products");
@@ -58,6 +64,34 @@ export default function AdminDashboard() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setAuthed(true);
     }
+  }, []);
+
+  // Polling para obtener órdenes en tiempo real cada 10 segundos
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchOrders = async () => {
+      try {
+        const res = await fetch("/api/orders", {
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error("Error al cargar órdenes");
+        const data = await res.json();
+        if (!cancelled) setOrders(data.orders);
+        if (!cancelled) setLastUpdated(new Date());
+      } catch (err) {
+        console.error("Error en polling de órdenes:", err);
+      }
+    };
+
+    fetchOrders(); // Ejecutar inmediatamente
+
+    const interval = setInterval(fetchOrders, 10000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -87,10 +121,8 @@ export default function AdminDashboard() {
   const handleTabChange = (newTab: Tab) => {
     setTab(newTab);
     if (newTab === "orders") {
-      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-      const saved = localStorage.getItem("optica-mia-orders");
-      if (saved && cart.length > 0) setOrders(JSON.parse(saved));
-      else { setOrders([]); localStorage.removeItem("optica-mia-orders"); }
+      setOrders([]);
+      setLastUpdated(new Date());
     }
   };
 
@@ -513,6 +545,14 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
 
           {tab === "orders" && (
             <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900">Pedidos</h2>
+                {lastUpdated && (
+                  <span className="text-xs text-gray-500">
+                    Última actualización: {lastUpdated.toLocaleTimeString("es-CO")}
+                  </span>
+                )}
+              </div>
               {orders.length === 0 ? (
                 <div className="rounded-xl bg-white p-12 text-center shadow-sm">
                   <ShoppingCart size={48} className="mx-auto mb-3 text-gray-300" />
@@ -522,15 +562,40 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
               ) : (
                 <div className="space-y-4">
                   {orders.map((order, idx) => (
-                    <div key={order.id} className="rounded-xl bg-white p-5 shadow-sm">
+                    <div
+                      key={order.id}
+                      className="rounded-xl bg-white p-5 shadow-sm"
+                    >
                       <div className="mb-3 flex items-center justify-between">
                         <div>
-                          <p className="font-semibold text-gray-900">Pedido #{idx + 1}</p>
-                          <p className="text-xs text-gray-500">{new Date(order.date).toLocaleDateString("es-CO")}</p>
+                          <p className="font-semibold text-gray-900">
+                            Pedido #{idx + 1} - {order.customerName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {order.customerEmail} | {order.customerPhone}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {order.customerCity === "" ? "Ciudad no especificada" : order.customerCity}
+                          </p>
                         </div>
-                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
-                          {formatPrice(order.total)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                              order.status === "pendiente"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : order.status === "confirmado"
+                                  ? "bg-green-100 text-green-700"
+                                  : order.status === "rechazado"
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {order.status}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {order.paymentProvider || "No especificado"}
+                          </span>
+                        </div>
                       </div>
                       <table className="w-full text-sm">
                         <thead>
@@ -543,7 +608,7 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
                         <tbody>
                           {order.items.map((item, i) => (
                             <tr key={i}>
-                              <td className="py-1 text-gray-700">{item.name}</td>
+                              <td className="py-1 text-gray-700">{item.productName}</td>
                               <td className="py-1 text-center text-gray-600">{item.quantity}</td>
                               <td className="py-1 text-right font-medium text-gray-900">
                                 {formatPrice(item.price * item.quantity)}

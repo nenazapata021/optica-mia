@@ -75,7 +75,7 @@ export async function createWebCheckout(params: CreateWebCheckoutParams): Promis
     payment_method: {
       type: params.paymentMethod,
       ...(params.paymentMethod === "NEQUI"
-        ? { financial_institution_code: "1507" }
+        ? { financial_institution_code: "1507", phone_number: params.customer.phone_number }
         : {}),
       ...(params.paymentMethod === "ADDI" && params.installments
         ? { installments: params.installments }
