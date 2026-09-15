@@ -1,26 +1,25 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import {
-  generateWebCheckoutSignature,
-  createWebCheckout,
-} from "@/lib/payments/wompi";
+import { createWebCheckout } from "@/lib/payments/wompi";
 import { addi, sistecredito } from "@/lib/payments";
 
 const PROVIDERS = {
   wompi: {
     name: "Wompi" as const,
-    createCheckout: async (order: {
-      totalInCents: number;
-      customerName: string;
-      customerEmail: string;
-      customerPhone: string;
-      customerCity: string;
-      orderId: string;
-    }): Promise<{ checkoutUrl: string; paymentReference: string }> => {
+    createCheckout: async (
+      order: {
+        totalInCents: number;
+        customerName: string;
+        customerEmail: string;
+        customerPhone: string;
+        customerCity: string;
+        orderId: string;
+      },
+      paymentMethod: "NEQUI" | "ADDI" | "SISTECREDITO" = "NEQUI"
+    ): Promise<{ checkoutUrl: string; paymentReference: string }> => {
       const reference = `MIA-${Date.now()}-${order.orderId.slice(-8).toUpperCase()}`;
       const amountInCents = order.totalInCents;
 
-      // Obtener tokens de aceptación de Wompi merchant
       const merchantRes = await fetch(
         `${process.env.WOMPI_API_URL}/merchants/${process.env.WOMPI_PUBLIC_KEY}`,
         {
@@ -50,7 +49,7 @@ const PROVIDERS = {
           full_name: order.customerName,
           phone_number: order.customerPhone,
         },
-        paymentMethod: "ADDI",
+        paymentMethod,
         acceptanceToken,
         personalAuthToken,
         redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/success`,
@@ -94,7 +93,11 @@ type ProviderKey = keyof typeof PROVIDERS;
 
 export async function POST(request: Request) {
   try {
-    const { provider, orderId }: { provider: string; orderId: string } =
+    const {
+      provider,
+      orderId,
+      paymentMethod: requestedMethod,
+    }: { provider: string; orderId: string; paymentMethod?: string } =
       await request.json();
 
     if (!provider || !orderId) {
@@ -142,14 +145,21 @@ export async function POST(request: Request) {
     let result: { checkoutUrl: string; paymentReference: string };
 
     if (providerKey === "wompi") {
-      result = await PROVIDERS.wompi.createCheckout({
-        totalInCents: order.totalInCents,
-        customerName: order.customerName ?? "",
-        customerEmail: order.customerEmail ?? "",
-        customerPhone: order.customerPhone ?? "",
-        customerCity: order.customerCity ?? "",
-        orderId: order.id,
-      });
+      const wompiMethod =
+        requestedMethod === "NEQUI" || requestedMethod === "ADDI" || requestedMethod === "SISTECREDITO"
+          ? requestedMethod
+          : "NEQUI";
+      result = await PROVIDERS.wompi.createCheckout(
+        {
+          totalInCents: order.totalInCents,
+          customerName: order.customerName ?? "",
+          customerEmail: order.customerEmail ?? "",
+          customerPhone: order.customerPhone ?? "",
+          customerCity: order.customerCity ?? "",
+          orderId: order.id,
+        },
+        wompiMethod
+      );
     } else if (providerKey === "addi") {
       // Modo manual: el link viene desde el panel de comercio
       result = await PROVIDERS.addi.createCheckout();

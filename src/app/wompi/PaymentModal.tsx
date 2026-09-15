@@ -131,14 +131,19 @@ export default function PaymentModal({
 
       const data = await res.json();
 
-      setTransactionId(data.transaction.id);
       setOrderId(data.orderId ?? null);
 
-      if (method === "NEQUI" && data.transaction.nequiQrUrl) {
-        setNequiQrUrl(data.transaction.nequiQrUrl);
+      if (method === "NEQUI" && data.transactionId && data.nequiQrUrl) {
+        // NEQUI: mostrar QR y hacer polling
+        setTransactionId(data.transactionId);
+        setNequiQrUrl(data.nequiQrUrl);
         setStep("qr");
-      } else if (method === "ADDI" || method === "SISTECREDITO") {
+      } else if (data.requiresWhatsApp || method === "ADDI" || method === "SISTECREDITO") {
+        // ADDI / SISTECREDITO: flujo manual por WhatsApp
         setStep("whatsapp");
+      } else if (data.transactionId) {
+        setTransactionId(data.transactionId);
+        setStep("success");
       } else {
         setStep("success");
       }
