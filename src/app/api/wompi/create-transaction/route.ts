@@ -7,28 +7,59 @@ import {
 } from "@/services/wompi";
 import { isDemoMode, createDemoTransaction } from "@/services/paymentDemo";
 
+function normalizarTelefonoColombiano(phone: string): { normalized: string; valid: boolean } {
+  if (!phone) return { normalized: "", valid: false };
+  const cleaned = phone.replace(/\s|-|\(|\)/g, "");
+  if (cleaned.startsWith("+57")) {
+    const digits = cleaned.slice(3);
+    if (digits.length === 10) return { normalized: digits, valid: true };
+  }
+  if (cleaned.length === 10) return { normalized: cleaned, valid: true };
+  if (cleaned.length === 11 && cleaned.startsWith("3")) {
+    const digits = cleaned.slice(1);
+    if (digits.length === 10) return { normalized: digits, valid: true };
+  }
+  return { normalized: "", valid: false };
+}
+
 type PaymentMethodType = "NEQUI" | "ADDI" | "SISTECREDITO";
 
 export async function POST(req: Request) {
-  try {
-    const { customerId, items, paymentMethod, customerInfo } = (await req.json()) as {
-      customerId: string;
-      items: { productId: string; quantity: number; price: number }[];
-      paymentMethod: { type: PaymentMethodType };
-      customerInfo: {
-        email: string;
-        full_name: string;
-        phone_number?: string;
-        legal_id?: string;
-        legal_id_type?: string;
-      };
+  const { customerId, items, paymentMethod, customerInfo } = (await req.json()) as {
+    customerId: string;
+    items: { productId: string; quantity: number; price: number }[];
+    paymentMethod: { type: PaymentMethodType };
+    customerInfo: {
+      email: string;
+      full_name: string;
+      phone_number?: string;
+      legal_id?: string;
+      legal_id_type?: string;
     };
+  }
 
+  try {
     if (!customerId || !items?.length || !paymentMethod?.type || !customerInfo) {
       return Response.json(
         { error: "Faltan campos requeridos: customerId, items, paymentMethod, customerInfo" },
         { status: 400 }
       );
+    }
+
+    // Normalizar número de teléfono para Wompi (10 dígitos, sin +57, sin espacios)
+    const phoneNormalization = normalizarTelefonoColombiano(
+      customerInfo.phone_number ?? ""
+    );
+    const normalizedPhone = phoneNormalization.valid ? phoneNormalization.normalized : undefined;
+
+    // Validación: Nequi requiere número de teléfono normalizado
+    if (paymentMethod.type === "NEQUI") {
+      if (!normalizedPhone) {
+        return Response.json(
+          { error: "Nequi requiere un número de teléfono válido de 10 dígitos (sin +57 ni espacios)" },
+          { status: 400 }
+        );
+      }
     }
 
     // Monto SIEMPRE calculado en el servidor
@@ -44,6 +75,10 @@ export async function POST(req: Request) {
 
       if (producto) {
         priceToUse = producto.price;
+      } else {
+        console.warn(
+          `Producto no encontrado en BD por ID "${item.productId}", usando precio del carrito`
+        );
       }
 
       const itemTotalCents = priceToUse * 100 * item.quantity;
@@ -67,10 +102,10 @@ export async function POST(req: Request) {
         customerEmail: customerInfo.email,
         customerPhone: customerInfo.phone_number ?? "",
         customerCity: "",
-        paymentReference: referencia,
+        externalId: referencia,
         totalInCents: totalCents / 100,
         status: "PENDING",
-        paymentProvider: paymentMethod.type === "NEQUI" ? "Wompi" : paymentMethod.type,
+        paymentProvider: paymentMethod.type === "NEQUI" ? "WOMPI" : paymentMethod.type,
         items: {
           create: serverItems.map((item) => ({
             productId: item.productId,
@@ -98,7 +133,7 @@ export async function POST(req: Request) {
       return Response.json({
         transactionId: null,
         nequiQrUrl: null,
-        orderId: orden.id,
+        orderId:orden.id,
         referencia,
         amountInCents: totalCents,
         status: "PENDING",
@@ -119,7 +154,7 @@ export async function POST(req: Request) {
 
       // Guardar transactionId demo en la orden
       await prisma.order.update({
-        where: { id: orden.id },
+        where: { id:orden.id },
         data: {
           transactionId: demoResult.data.id,
           wompiStatus: "PENDING",
@@ -129,7 +164,7 @@ export async function POST(req: Request) {
       return Response.json({
         transactionId: demoResult.data.id,
         nequiQrUrl: demoResult.data.nequiQrUrl,
-        orderId: orden.id,
+        orderId:orden.id,
         referencia,
         amountInCents: totalCents,
         status: "PENDING",
@@ -137,13 +172,6 @@ export async function POST(req: Request) {
     }
 
     // Producción: crear transacción real en Wompi
-    if (!customerInfo.phone_number) {
-      return Response.json(
-        { error: "Nequi requiere número de teléfono" },
-        { status: 400 }
-      );
-    }
-
     const merchant = await getMerchantInfo();
 
     const txResult = await createTransaction({
@@ -152,7 +180,7 @@ export async function POST(req: Request) {
       customer: {
         email: customerInfo.email,
         full_name: customerInfo.full_name,
-        phone_number: customerInfo.phone_number,
+        phone_number: normalizedPhone ?? customerInfo.phone_number,
         legal_id: customerInfo.legal_id,
         legal_id_type: customerInfo.legal_id_type,
       },
@@ -164,7 +192,7 @@ export async function POST(req: Request) {
 
     // Guardar transactionId en la orden
     await prisma.order.update({
-      where: { id: orden.id },
+      where: { id:orden.id },
       data: {
         transactionId: txResult.data.id,
         wompiStatus: txResult.data.status,
@@ -174,14 +202,23 @@ export async function POST(req: Request) {
     return Response.json({
       transactionId: txResult.data.id,
       nequiQrUrl: txResult.data.nequiQrUrl,
-      orderId: orden.id,
+      orderId:orden.id,
       referencia,
       amountInCents: totalCents,
       status: txResult.data.status,
     });
   } catch (error) {
-    console.error("create-transaction error:", error);
-    const message = getWompiErrorMessage(error);
+    console.error(
+      "create-transaction error:",
+      error,
+      "\ncustomerId:",
+      customerId,
+      "\npaymentMethod.type:",
+      paymentMethod?.type,
+      "\nitem product IDs:",
+      items.map((i) => i.productId)
+    );
+    const message = getWompiErrorMessage(error, paymentMethod?.type ?? undefined);
     return Response.json({ error: message }, { status: 500 });
   }
 }

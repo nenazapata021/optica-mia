@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       });
       let status = order?.wompiStatus ?? "PENDING";
 
-      if (order?.paymentProvider === "Wompi" && status !== "APPROVED") {
+      if (order?.paymentProvider === "WOMPI" && status !== "APPROVED") {
         const elapsed = Date.now() - new Date(order.createdAt).getTime();
         if (elapsed >= DEMO_NEQUI_APPROVE_DELAY_MS) {
           status = "APPROVED";

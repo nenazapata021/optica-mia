@@ -10,6 +10,7 @@ export {
   generateWebCheckoutSignature,
   verifyWebhookSignature,
   createWebCheckout,
+  normalizarTelefonoColombiano,
   type CreateWebCheckoutParams,
 } from "./wompi";
 

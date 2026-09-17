@@ -22,13 +22,8 @@ export async function POST(
       const payload = JSON.stringify(body);
       signatureValid = verifyWebhookSignature(payload, signature);
     } else if (provider === "addi" || provider === "sistecredito") {
-      // Addi / Sistecredito: TODO - implementar verificación cuando se conozca el mecanismo
-      // Por ahora establecemos signatureValid en false pero procesamos igualmente
-      // en modo manual/pending. Cuando se conozca el mecanismo de firma de cada uno,
-      // se reemplazará este bloque con la validación correspondiente.
-      console.log(
-        `Webhook de ${provider} recibido sin validación de firma (por implementar)`
-      );
+      // Addi / Sistecredito: firma por verificar, procesar igualmente
+      console.log(`Webhook de ${provider} recibido sin validación de firma (por implementar)`);
       signatureValid = false;
     } else {
       return NextResponse.json(
@@ -46,35 +41,45 @@ export async function POST(
       );
     }
 
-    // Actualizar estado del pedido por paymentReference
+    // Actualizar estado del pedido por externalId
     const updateData: any = {
-      paymentReference: transaction.id,
+      externalId: transaction.id,
     };
 
     // Determinar estado basado en el status del proveedor
-    const wompiStatus: string = transaction.status;
+    const status = transaction.status;
 
-    if (wompiStatus === "APPROVED") {
-      updateData.paymentStatus = "approved";
+    if (status === "APPROVED") {
       updateData.status = "confirmado";
-    } else if (wompiStatus === "DECLINED" || wompiStatus === "VOIDED") {
-      updateData.paymentStatus = "declined";
+    } else if (status === "DECLINED" || status === "VOIDED") {
       updateData.status = "rechazado";
-    } else if (wompiStatus === "ERROR") {
-      updateData.paymentStatus = "error";
+    } else if (status === "ERROR") {
       updateData.status = "error";
     } else {
       // Estados intermedios: mantener pending
-      updateData.paymentStatus = "pending";
+      updateData.status = "pendiente";
     }
 
+    // Establecer paymentProvider basado en el proveedor
+    let paymentProviderKey: string;
+    if (provider === "wompi") {
+      paymentProviderKey = "WOMPI";
+    } else if (provider === "addi") {
+      paymentProviderKey = "ADDI";
+    } else if (provider === "sistecredito") {
+      paymentProviderKey = "SISTECREDITO";
+    } else {
+      paymentProviderKey = "WOMPI"; // default
+    }
+    updateData.paymentProvider = paymentProviderKey;
+
     await prisma.order.updateMany({
-      where: { paymentReference: transaction.id },
+      where: { externalId: transaction.id },
       data: updateData,
     });
 
-    // Disparar notificación cuando el estado sea "approved"
-    if (updateData.paymentStatus === "approved") {
+    // Disparar notificación cuando el estado sea "confirmado"
+    if (updateData.status === "confirmado") {
       // TODO: Llamar a notifyOrderPaid - esto requiere un servicio de notificaciones
       // await notifyOrderPaid({ orderId: transaction.id, provider });
       console.log(
@@ -85,7 +90,7 @@ export async function POST(
     return NextResponse.json({
       ok: true,
       provider,
-      paymentStatus: updateData.paymentStatus,
+      status: updateData.status,
     });
   } catch (error) {
     console.error("Webhook error:", error);

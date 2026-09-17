@@ -22,7 +22,6 @@ export async function GET() {
       total: o.totalInCents / 100,
       status: o.status,
       paymentProvider: o.paymentProvider || "",
-      paymentStatus: o.paymentStatus || "",
       items: o.items.map((i) => ({
         productName: i.product?.name || i.productId,
         quantity: i.quantity,
@@ -67,6 +66,7 @@ export async function POST(request: Request) {
       data: {
         customerId,
         totalInCents,
+        paymentProvider: "WOMPI", // valor por defecto
         customerName: "",
         customerEmail: "",
         customerPhone: "",

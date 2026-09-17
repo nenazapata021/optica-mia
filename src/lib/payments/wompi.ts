@@ -16,6 +16,21 @@ export function generateWebCheckoutSignature(
   return crypto.createHash("sha256").update(text).digest("hex");
 }
 
+export function normalizarTelefonoColombiano(phone: string): { normalized: string; valid: boolean } {
+  if (!phone) return { normalized: "", valid: false };
+  const cleaned = phone.replace(/\s|-|\(|\)/g, "");
+  if (cleaned.startsWith("+57")) {
+    const digits = cleaned.slice(3);
+    if (digits.length === 10) return { normalized: digits, valid: true };
+  }
+  if (cleaned.length === 10) return { normalized: cleaned, valid: true };
+  if (cleaned.length === 11 && cleaned.startsWith("3")) {
+    const digits = cleaned.slice(1);
+    if (digits.length === 10) return { normalized: digits, valid: true };
+  }
+  return { normalized: "", valid: false };
+}
+
 export function verifyWebhookSignature(
   payload: string,
   signature: string

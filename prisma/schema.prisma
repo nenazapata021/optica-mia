@@ -4,6 +4,19 @@ generator client {
   previewFeatures = []
 }
 
+enum PaymentProvider {
+  WOMPI
+  ADDI
+  SISTECREDITO
+}
+
+enum OrderStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  ERROR
+}
+
 datasource db {
   provider = "postgresql"
 }
@@ -95,12 +108,12 @@ model Order {
   // Validación logística: solo se vende dentro de Medellín/Itagüí
   cityValidated   Boolean     @default(false)
 
-  // Campos de pago (unificados para Wompi/Addi/Sistecredito)
-  paymentProvider String?     @map("paymentMethod")
-  paymentReference String?    // Referencia única del proveedor
-  paymentStatus   String?     // Enum: pending | approved | declined | expired | error
+  // Campos de pago unificados para Wompi/Addi/Sistecredito
+  paymentProvider PaymentProvider
+  paymentMethod   String?                          // Solo aplica si paymentProvider = WOMPI, valores: CARD, NEQUI, PSE
+  externalId      String?                          // ID de transacción en el proveedor externo
+  status          String      @default("PENDING") // Usado por el dashboard: "pendiente" | "confirmado" | "rechazado"
 
-  status          String      @default("pendiente")
   transactionId   String?     @unique
   wompiStatus     String?
   createdAt       DateTime    @default(now())

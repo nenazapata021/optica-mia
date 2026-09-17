@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { X, Loader2, CheckCircle, AlertCircle, Clock } from "lucide-react";
-import { useCart, type CartItem } from "../context/CartContextType";
+import { useCart } from "../context/CartContextType";
+import WhatsAppCheckoutModal from "../whatsapp/WhatsAppCheckoutModal";
 
 type PaymentMethodType = "NEQUI" | "ADDI" | "SISTECREDITO";
 
@@ -47,28 +48,6 @@ const PAYMENT_METHODS: {
   },
 ];
 
-const WHATSAPP_NUMBER = "573017391219";
-
-function buildWhatsappUrl(
-  method: PaymentMethodType,
-  customerName: string,
-  items: CartItem[],
-  orderId: string | null
-): string {
-  const metodo = method === "ADDI" ? "Addi" : "Sistecredito";
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const productLines = items
-    .map((item) => `- ${item.name} x${item.quantity} $${item.price.toLocaleString("es-CO")}`)
-    .join("\n");
-  const message =
-    `Hola, quiero comprar con ${metodo}.\n` +
-    `Cliente: ${customerName}\n` +
-    (orderId ? `Número de pedido: ${orderId}\n` : "") +
-    `Productos:\n${productLines}\n` +
-    `Total: $${total.toLocaleString("es-CO")}`;
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-}
-
 export default function PaymentModal({
   customerId,
   customerInfo,
@@ -83,13 +62,7 @@ export default function PaymentModal({
   const [nequiQrUrl, setNequiQrUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [pollCount, setPollCount] = useState(0);
-
-  const isCreditMethod =
-    selectedMethod === "ADDI" || selectedMethod === "SISTECREDITO";
-  const whatsappUrl =
-    isCreditMethod && customerInfo
-      ? buildWhatsappUrl(selectedMethod, customerInfo.full_name, cartItems, orderId)
-      : null;
+  const [showWhatsApp, setShowWhatsApp] = useState(false);
 
   const handleSelectMethod = async (method: PaymentMethodType) => {
     setSelectedMethod(method);
@@ -97,7 +70,7 @@ export default function PaymentModal({
     setErrorMsg("");
 
     // Validación especial para Nequi: requiere número de teléfono
-    if (method === "NEQUI" && 
+    if (method === "NEQUI" &&
         (!customerInfo.phone_number || customerInfo.phone_number.trim() === "")) {
       setErrorMsg(
         "Por favor, ingresa tu número de teléfono para pagar con Nequi"
@@ -113,6 +86,8 @@ export default function PaymentModal({
         price: item.price,
       }));
 
+      // Todos los métodos (Nequi, Addi, Sistecredito) pasan por /api/wompi/create-transaction
+      // que crea la orden en la BD y retorna requiresWhatsApp para Addi/Sistecredito
       const res = await fetch("/api/wompi/create-transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -131,16 +106,16 @@ export default function PaymentModal({
 
       const data = await res.json();
 
-      setOrderId(data.orderId ?? null);
-
       if (method === "NEQUI" && data.transactionId && data.nequiQrUrl) {
         // NEQUI: mostrar QR y hacer polling
         setTransactionId(data.transactionId);
         setNequiQrUrl(data.nequiQrUrl);
+        setOrderId(data.orderId ?? null);
         setStep("qr");
-      } else if (data.requiresWhatsApp || method === "ADDI" || method === "SISTECREDITO") {
-        // ADDI / SISTECREDITO: flujo manual por WhatsApp
-        setStep("whatsapp");
+      } else if (data.requiresWhatsApp) {
+        // ADDI / SISTECREDITO: mostrar modal de WhatsApp
+        setOrderId(data.orderId ?? null);
+        setShowWhatsApp(true);
       } else if (data.transactionId) {
         setTransactionId(data.transactionId);
         setStep("success");
@@ -287,7 +262,7 @@ export default function PaymentModal({
           </div>
         )}
 
-        {/* Segundo paso: Addi / Sistecredito por WhatsApp */}
+        {/* Segundo paso: Addi / Sistecredito por WhatsApp (legacy fallback) */}
         {step === "whatsapp" && (
           <div className="flex flex-col py-4 text-center">
             <h3 className="mb-2 text-xl font-bold text-gray-800">
@@ -297,17 +272,6 @@ export default function PaymentModal({
               Para finalizar tu compra con Addi o Sistecredito, un asesor te va a
               atender por WhatsApp.
             </p>
-            <a
-              href={whatsappUrl ?? "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-3 rounded-xl border border-[#D4AF37] p-4 text-base font-semibold text-gray-800 transition hover:border-[#C39C4E] hover:bg-[#FBF7EC]"
-            >
-              <svg viewBox="0 0 24 24" fill="#25D366" width="24" height="24" aria-hidden="true">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-              </svg>
-              Continuar por WhatsApp
-            </a>
             <button
               onClick={() => setStep("select")}
               className="mt-4 text-sm font-medium text-gray-500 underline hover:text-gray-700"
@@ -325,32 +289,15 @@ export default function PaymentModal({
               ¡Pago exitoso!
             </h3>
             <p className="mt-2 text-sm text-gray-500">
-              {whatsappUrl
-                ? `Completa tu compra con ${selectedMethod === "ADDI" ? "Addi" : "Sistecredito"} escríbenos por WhatsApp.`
-                : "Tu pedido ha sido confirmado. Te contactaremos pronto."}
+              Tu pedido ha sido confirmado. Te contactaremos pronto.
             </p>
-            {whatsappUrl && (
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 flex items-center justify-center gap-2 rounded-lg bg-[#25D366] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#20BD5C]"
-              >
-                <svg viewBox="0 0 24 24" fill="white" width="18" height="18" aria-hidden="true">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                </svg>
-                Continuar por WhatsApp
-              </a>
-            )}
-            {!whatsappUrl && (
-              <Link
-                href="/"
-                onClick={handleFinish}
-                className="mt-6 rounded-lg bg-[#D4AF37] px-6 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-[#C39C4E]"
-              >
-                Volver al inicio
-              </Link>
-            )}
+            <Link
+              href="/"
+              onClick={handleFinish}
+              className="mt-6 rounded-lg bg-[#D4AF37] px-6 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-[#C39C4E]"
+            >
+              Volver al inicio
+            </Link>
           </div>
         )}
 
@@ -379,6 +326,30 @@ export default function PaymentModal({
           </div>
         )}
       </div>
+
+      {/* Modal de WhatsApp para Addi / Sistecredito */}
+      {showWhatsApp && selectedMethod && (
+        <WhatsAppCheckoutModal
+          open={showWhatsApp}
+          setOpen={setShowWhatsApp}
+          paymentMethod={selectedMethod}
+          orderSummary={{
+            products: cartItems.map((item) => item.name),
+            total: cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+            quantity: cartItems.map((item) => item.quantity),
+          }}
+          customerData={{
+            name: customerInfo.full_name,
+            phone: customerInfo.phone_number,
+            email: customerInfo.email,
+          }}
+          orderId={orderId ?? undefined}
+          onClose={() => {
+            setShowWhatsApp(false);
+            setStep("select");
+          }}
+        />
+      )}
     </div>
   );
 }

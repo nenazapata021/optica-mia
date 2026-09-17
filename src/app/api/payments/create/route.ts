@@ -173,12 +173,19 @@ export async function POST(request: Request) {
     }
 
     // 4. Guardar campos de pago en la orden
+    // Mapear providerKey a los valores del enum PaymentProvider (mayúsculas)
+    const providerEnumKey =
+      providerKey === "wompi" ? "WOMPI" :
+      providerKey === "addi" ? "ADDI" :
+      providerKey === "sistecredito" ? "SISTECREDITO" :
+      providerKey;
+
     await prisma.order.update({
       where: { id: orderId },
       data: {
-        paymentProvider: providerKey,
-        paymentReference: result.paymentReference || order.id,
-        paymentStatus: "pending",
+        paymentProvider: providerEnumKey,
+        // $expectedBy$: typescript-prisma
+        externalId: result.paymentReference || order.id,
       },
     });
 
