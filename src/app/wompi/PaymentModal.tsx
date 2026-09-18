@@ -5,7 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { X, Loader2, CheckCircle, AlertCircle, Clock } from "lucide-react";
 import { useCart } from "../context/CartContextType";
-import WhatsAppCheckoutModal from "../whatsapp/WhatsAppCheckoutModal";
+import WhatsAppCheckoutButton from "../whatsapp/WhatsAppCheckoutButton";
+import type { WhatsAppOrderData } from "../whatsapp/WhatsAppCheckoutButton";
+import BreBPayment from "../../components/checkout/BreBPayment";
 
 type PaymentMethodType = "NEQUI" | "ADDI" | "SISTECREDITO";
 
@@ -55,29 +57,28 @@ export default function PaymentModal({
   onComplete,
 }: PaymentModalProps) {
   const { cartItems, clearCart } = useCart();
-  const [step, setStep] = useState<"select" | "processing" | "qr" | "success" | "error" | "whatsapp">("select");
+  const [step, setStep] = useState<"select" | "processing" | "qr" | "success" | "error" | "whatsapp" | "breb">("select");
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [nequiQrUrl, setNequiQrUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [pollCount, setPollCount] = useState(0);
-  const [showWhatsApp, setShowWhatsApp] = useState(false);
+  const [whatsappOrderData, setWhatsappOrderData] = useState<WhatsAppOrderData | null>(null);
 
   const handleSelectMethod = async (method: PaymentMethodType) => {
     setSelectedMethod(method);
-    setStep("processing");
     setErrorMsg("");
 
-    // Validación especial para Nequi: requiere número de teléfono
-    if (method === "NEQUI" &&
-        (!customerInfo.phone_number || customerInfo.phone_number.trim() === "")) {
-      setErrorMsg(
-        "Por favor, ingresa tu número de teléfono para pagar con Nequi"
-      );
-      setStep("error");
+    // NEQUI: mostrar BreB directamente sin llamar a la API
+    if (method === "NEQUI") {
+      setStep("breb");
       return;
     }
+
+    setStep("processing");
+
+    // Solo Addi/Sistecredito requieren phone validation y API call
 
     try {
       const items = cartItems.map((item) => ({
@@ -106,16 +107,17 @@ export default function PaymentModal({
 
       const data = await res.json();
 
-      if (method === "NEQUI" && data.transactionId && data.nequiQrUrl) {
-        // NEQUI: mostrar QR y hacer polling
-        setTransactionId(data.transactionId);
-        setNequiQrUrl(data.nequiQrUrl);
+      if (data.requiresWhatsApp) {
+        // ADDI / SISTECREDITO: mostrar bloque inline de WhatsApp
         setOrderId(data.orderId ?? null);
-        setStep("qr");
-      } else if (data.requiresWhatsApp) {
-        // ADDI / SISTECREDITO: mostrar modal de WhatsApp
-        setOrderId(data.orderId ?? null);
-        setShowWhatsApp(true);
+        setWhatsappOrderData({
+          products: cartItems.map((item) => item.name),
+          quantities: cartItems.map((item) => item.quantity),
+          total: cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+          customerName: customerInfo.full_name,
+          paymentMethod: method as "ADDI" | "SISTECREDITO",
+        });
+        setStep("whatsapp");
       } else if (data.transactionId) {
         setTransactionId(data.transactionId);
         setStep("success");
@@ -262,19 +264,21 @@ export default function PaymentModal({
           </div>
         )}
 
-        {/* Segundo paso: Addi / Sistecredito por WhatsApp (legacy fallback) */}
-        {step === "whatsapp" && (
-          <div className="flex flex-col py-4 text-center">
-            <h3 className="mb-2 text-xl font-bold text-gray-800">
-              Finaliza tu compra por WhatsApp
-            </h3>
-            <p className="mb-6 text-sm text-gray-500">
-              Para finalizar tu compra con Addi o Sistecredito, un asesor te va a
-              atender por WhatsApp.
-            </p>
+        {/* Addi / Sistecredito: WhatsApp inline */}
+        {step === "whatsapp" && whatsappOrderData && (
+          <WhatsAppCheckoutButton
+            orderData={whatsappOrderData}
+            onBack={() => setStep("select")}
+          />
+        )}
+
+        {/* Nequi: BreB payment */}
+        {step === "breb" && (
+          <div>
+            <BreBPayment amount={cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)} />
             <button
               onClick={() => setStep("select")}
-              className="mt-4 text-sm font-medium text-gray-500 underline hover:text-gray-700"
+              className="mt-4 w-full text-center text-sm font-medium text-gray-500 underline hover:text-gray-700"
             >
               Volver
             </button>
@@ -326,30 +330,6 @@ export default function PaymentModal({
           </div>
         )}
       </div>
-
-      {/* Modal de WhatsApp para Addi / Sistecredito */}
-      {showWhatsApp && selectedMethod && (
-        <WhatsAppCheckoutModal
-          open={showWhatsApp}
-          setOpen={setShowWhatsApp}
-          paymentMethod={selectedMethod}
-          orderSummary={{
-            products: cartItems.map((item) => item.name),
-            total: cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
-            quantity: cartItems.map((item) => item.quantity),
-          }}
-          customerData={{
-            name: customerInfo.full_name,
-            phone: customerInfo.phone_number,
-            email: customerInfo.email,
-          }}
-          orderId={orderId ?? undefined}
-          onClose={() => {
-            setShowWhatsApp(false);
-            setStep("select");
-          }}
-        />
-      )}
     </div>
   );
 }

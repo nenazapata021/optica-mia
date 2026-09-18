@@ -8,6 +8,7 @@ import { Trash2, ShoppingCart, ArrowRight, Plus, Minus, Check } from "lucide-rea
 import { useCart, type CartItem } from "../context/CartContextType";
 import RegistroCliente from "../registro/RegistroCliente";
 import PaymentModal from "../wompi/PaymentModal";
+import BreBPayment from "../../components/checkout/BreBPayment";
 
 const LS_CUSTOMER_KEY = "optica-mia-customer-data";
 
@@ -397,6 +398,10 @@ export default function CarritoPage() {
                 Proceder al pago
                 <ArrowRight size={20} />
               </button>
+
+              <div className="mt-6 border-t pt-6">
+                <BreBPayment amount={totalPrice} />
+              </div>
             </div>
           </div>
         )}
