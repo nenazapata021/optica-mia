@@ -13,24 +13,50 @@ const LS_CUSTOMER_KEY = "optica-mia-customer-data";
 
 const COLOR_MAP: Record<string, string> = {
   "vino": "#6E2A35",
-  "marr\u00f3n rosado": "#A67F72",
+  "marrón rosado": "#A67F72",
   "dorado": "#D4AF37",
   "dorado claro": "#E6C88C",
-  "rosa palo transl\u00fadecido": "#E8CFC4",
-  "rojo vino transl\u00fadecido": "#B4485A",
+  "rosa palo translúcido": "#E8CFC4",
+  "rojo vino translúcido": "#B4485A",
   "carey/habana": "#A5673F",
   "negro": "#1A1A1A",
   "plateado": "#C7C9CC",
-  "azul transl\u00fadecido": "#6F8FA8",
-  "caf\u00e9": "#6B4A3A",
+  "azul translúcido": "#6F8FA8",
+  "café": "#6B4A3A",
   "negro mate": "#262626",
-  "gris transl\u00fadecido": "#B8B8B8",
+  "gris translúcido": "#B8B8B8",
   "dorado rosado": "#D9A79C",
   "negro brillante": "#0D0D0D",
 };
 
+// IDs de producto conocidos desde el catálogo en src/app/data/productos.js
+// Esto incluye tanto los lentes como las gafas de sol
+const CATALOG_PRODUCT_IDS = new Set([
+  "foto1", "foto2", "foto3", "foto4", "foto5", "foto6", "foto7", "foto8",
+  "foto9", "foto10", "foto11", "foto12", "foto13", "foto14", "foto15",
+  "foto16", "foto17", "foto18", "foto19", "foto20", "foto21",
+  "gafas-de-sol1", "gafas-de-sol2", "gafas-de-sol3", "gafas-de-sol4",
+  "gafas-de-sol5", "gafas-de-sol6", "gafas-redondas-negras",
+]);
+
 function colorHex(nombre: string): string {
   return COLOR_MAP[nombre.toLowerCase().trim()] || "#CCCCCC";
+}
+
+function esIDProductoValido(id: string): boolean {
+  // Verifica si el ID es un ID de producto conocido del catálogo
+  // (foto1-foto21 o gafas-de-sol*)
+  return CATALOG_PRODUCT_IDS.has(id.toLowerCase());
+}
+
+function obtenerIDsNoValidos(cartItems: CartItem[]): string[] {
+  const noValidos: string[] = [];
+  cartItems.forEach((item) => {
+    if (!esIDProductoValido(item.id)) {
+      noValidos.push(item.id);
+    }
+  });
+  return noValidos;
 }
 
 function SelectorColor({
@@ -124,6 +150,24 @@ export default function CarritoPage() {
       return;
     }
     const customerData = JSON.parse(raw);
+    
+    // Validación previa: verificar que todos los productos del carrito sean válidos
+    const idsNoValidos = obtenerIDsNoValidos(cartItems);
+    if (idsNoValidos.length > 0) {
+      // Mostrar error claro al usuario
+      // Los IDs no válidos podrían ser nombres de archivo en lugar de IDs de producto
+      const mensaje = idsNoValidos.length === 1
+        ? `El producto con ID "${idsNoValidos[0]}" no es un ID de producto reconocido. `
+        : `Los siguientes IDs de producto no son reconocidos: ${idsNoValidos.join(", ")}. ` +
+          "Por favor verifique que sus productos estén en el catálogo.";
+      
+      // En un entorno de producción, aquí podríamos mostrar un modal o toast
+      console.error("Error de validación de productos:", mensaje);
+      alert(mensaje + " Por favor, regrese al catálogo y vuelva a agregar los productos.");
+      return;
+    }
+    
+    const customerId = customerData.id;
     setPaymentCustomer({
       customerId: customerData.id,
       info: {
@@ -157,14 +201,28 @@ export default function CarritoPage() {
   };
 
   return (
-    <main className="w-full min-h-screen bg-[#f8fafc] py-12 px-4">
+    <main className="w-full min-h-screen bg-[#f8fafc] py-8 px-4">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-2 text-gray-800">
-          Tu Carrito de Compras
-        </h1>
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+          <span className="text-amber-600 mt-0.5">📦</span>
+          <div className="text-sm">
+            <p className="font-semibold text-amber-800">Solo Medellín e Itagüí</p>
+            <p className="text-amber-700/80">Envío gratis 24-48h en Valle de Aburrá. Si estás fuera, coordinamos por <a href="https://wa.me/573017391219" target="_blank" rel="noopener noreferrer" className="underline font-semibold">WhatsApp</a> antes de pagar.</p>
+          </div>
+        </div>
 
-        <p className="text-center text-gray-500 mb-12">
-          Revisa tus productos y procede al pago.
+        <div className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
+          <span className="flex items-center gap-1 text-[#008294]"><span className="h-6 w-6 rounded-full bg-[#008294] text-white flex items-center justify-center text-xs">1</span> Carrito</span>
+          <span className="h-px w-8 bg-gray-300" />
+          <span className="flex items-center gap-1"><span className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">2</span> Pago Wompi</span>
+          <span className="h-px w-8 bg-gray-300" />
+          <span className="flex items-center gap-1"><span className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">3</span> WhatsApp</span>
+        </div>
+        <h1 className="text-3xl md:text-4xl font-bold text-center mb-2 text-gray-800">
+          Tu Carrito
+        </h1>
+        <p className="text-center text-gray-500 mb-6">
+          Revisa tus productos — precios con IVA incluido
         </p>
 
         {!isClient || cartItems.length === 0 ? (
@@ -318,41 +376,47 @@ export default function CarritoPage() {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-xl border h-fit">
-              <h2 className="text-2xl font-bold mb-6 text-gray-800">
-                Resumen
+            <div className="bg-white p-6 rounded-xl border h-fit sticky top-[88px]">
+              <h2 className="text-xl font-bold mb-4 text-gray-800">
+                Resumen — con IVA
               </h2>
 
-              <div className="flex justify-between mb-2">
-                <span>Subtotal</span>
-                <span className="text-[#008294]">
+              <div className="flex justify-between mb-2 text-sm">
+                <span className="text-gray-600">Subtotal ({cartItems.length} {cartItems.length===1?"producto":"productos"})</span>
+                <span className="font-semibold text-gray-800">
                   ${typeof totalPrice === "number" ? totalPrice.toLocaleString("es-CO") : "0"}
                 </span>
               </div>
 
-              <div className="flex justify-between mb-6">
-                <span>Env\u00edo</span>
-                <span className="text-green-600">Gratis</span>
+              <div className="flex justify-between mb-2 text-sm">
+                <span className="text-gray-600">Envío Valle Aburrá</span>
+                <span className="font-semibold text-green-600">Gratis</span>
               </div>
+              <p className="text-xs text-gray-400 mb-4">Solo Medellín e Itagüí • Si estás fuera, te contactamos por WhatsApp</p>
 
-              <div className="border-t pt-4 flex justify-between">
-                <span className="text-lg font-bold">Total</span>
-
-                <span className="text-2xl font-bold text-[#008294]">
-                  $
-                  {typeof totalPrice === "number"
-                    ? totalPrice.toLocaleString("es-CO")
-                    : "0"}
+              <div className="border-t pt-4 flex justify-between items-center">
+                <span className="text-base font-bold">Total a pagar</span>
+                <span className="text-2xl font-extrabold text-[#008294]">
+                  ${typeof totalPrice === "number" ? totalPrice.toLocaleString("es-CO") : "0"}
                 </span>
               </div>
+              <p className="text-xs text-gray-400 mt-1">Financia con <span className="font-semibold">Addi</span> o <span className="font-semibold">Sistecredito</span> en el siguiente paso</p>
 
               <button
                 onClick={handlePago}
-                className="w-full mt-6 bg-[#C39C4E] text-slate-900 font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:opacity-90"
+                className="w-full mt-5 bg-[#008294] text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#005f6b] shadow-md hover:shadow-lg transition-all min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#008294] focus-visible:ring-offset-2"
               >
-                Proceder al pago
+                Pagar con Wompi
                 <ArrowRight size={20} />
               </button>
+              <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-500">
+                <span className="h-2 w-3 bg-[#e8d5a3] rounded-sm border" aria-hidden /> <span className="h-2 w-3 bg-[#008294] rounded-sm" aria-hidden /> Pago seguro Wompi • SSL
+              </div>
+              <p className="text-xs text-center text-gray-400 mt-2">Te llevaremos a WhatsApp si eliges Addi/Sistecredito</p>
+              <div className="mt-4 rounded-lg bg-gray-50 border p-3 text-xs text-gray-600">
+                <p className="font-semibold">¿Dudas?</p>
+                <a href="https://wa.me/573017391219" target="_blank" rel="noopener noreferrer" className="text-[#008294] underline font-medium">Chatea por WhatsApp — respuesta en minutos</a>
+              </div>
             </div>
           </div>
         )}

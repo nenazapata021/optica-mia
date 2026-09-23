@@ -4,6 +4,10 @@ import { isDemoMode } from "@/services/paymentDemo";
 
 export async function POST(request: Request) {
   try {
+    // Bloqueo total en producción aunque isDemoMode falle
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({ error: "No disponible en producción" }, { status: 403 });
+    }
     if (!isDemoMode()) {
       return NextResponse.json(
         { error: "El modo demo está desactivado" },

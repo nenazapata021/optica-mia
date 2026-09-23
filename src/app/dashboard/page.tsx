@@ -3,17 +3,31 @@
 import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { productosLentes, productosGafasSol } from "../data/productos";
-import { ShoppingCart, Package, Sun, Eye, Trash2, BarChart3, Table, ClipboardList, Mail, LogOut } from "lucide-react";
+import { toast } from "sonner";
+import { ShoppingCart, Package, Sun, Eye, Trash2, BarChart3, Table, ClipboardList, Mail, LogOut, Plus } from "lucide-react";
 import Logo from "../components/Logo";
+import AddProductModal from "./AddProductModal";
 
 const AUTH_KEY = "optica-mia-auth";
 
-interface Order {
+interface DbOrderItem {
+  productName: string;
+  quantity: number;
+  price: number;
+}
+
+interface DbOrder {
   id: string;
-  items: { name: string; quantity: number; price: number }[];
-  total: number;
   date: string;
-  customer: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerCity: string;
+  total: number;
+  status: string;
+  paymentProvider: string;
+  paymentStatus: string;
+  items: DbOrderItem[];
 }
 
 type Tab = "stats" | "products" | "orders";
@@ -27,14 +41,8 @@ const NAV_ITEMS: { key: Tab; label: string; icon: typeof BarChart3 }[] = [
 export default function AdminDashboard() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("stats");
-  const [orders, setOrders] = useState<Order[]>(() => {
-    if (typeof window !== "undefined") {
-      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-      const saved = localStorage.getItem("optica-mia-orders");
-      if (saved && cart.length > 0) return JSON.parse(saved);
-    }
-    return [];
-  });
+  const [orders, setOrders] = useState<DbOrder[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [customProducts, setCustomProducts] = useState<Record<string, { nombre: string; precio: number; color: string; categoria: string }>>(() => {
     if (typeof window !== "undefined") {
       const savedProducts = localStorage.getItem("optica-mia-custom-products");
@@ -42,12 +50,13 @@ export default function AdminDashboard() {
     }
     return {};
   });
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [form, setForm] = useState({ nombre: "", precio: "", color: "", categoria: "lentes" });
   const [authed, setAuthed] = useState(false);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     // Lectura de sessionStorage en montaje; evita mismatch de hidratación SSR
@@ -55,6 +64,34 @@ export default function AdminDashboard() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setAuthed(true);
     }
+  }, []);
+
+  // Polling para obtener órdenes en tiempo real cada 10 segundos
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchOrders = async () => {
+      try {
+        const res = await fetch("/api/orders", {
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error("Error al cargar órdenes");
+        const data = await res.json();
+        if (!cancelled) setOrders(data.orders);
+        if (!cancelled) setLastUpdated(new Date());
+      } catch (err) {
+        console.error("Error en polling de órdenes:", err);
+      }
+    };
+
+    fetchOrders(); // Ejecutar inmediatamente
+
+    const interval = setInterval(fetchOrders, 10000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -84,10 +121,8 @@ export default function AdminDashboard() {
   const handleTabChange = (newTab: Tab) => {
     setTab(newTab);
     if (newTab === "orders") {
-      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-      const saved = localStorage.getItem("optica-mia-orders");
-      if (saved && cart.length > 0) setOrders(JSON.parse(saved));
-      else { setOrders([]); localStorage.removeItem("optica-mia-orders"); }
+      setOrders([]);
+      setLastUpdated(new Date());
     }
   };
 
@@ -115,18 +150,58 @@ export default function AdminDashboard() {
   const getProductColor = (p: { id: string; color: string }) =>
     customProducts[p.id]?.color ?? p.color;
 
-  const saveProduct = () => {
-    if (!editingId) return;
-    const updated = { ...customProducts };
-    updated[editingId] = {
-      nombre: form.nombre,
-      precio: Number(form.precio),
-      color: form.color,
-      categoria: form.categoria,
-    };
-    setCustomProducts(updated);
-    setEditingId(null);
+  const handleSave = async () => {
+    if (!editingProductId) {
+      // MODO CREAR: guardar en DB vía POST
+      try {
+        const res = await fetch("/api/productos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nombre: form.nombre,
+            precio: Number(form.precio),
+            color: form.color,
+            categoria: form.categoria,
+          }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          toast.success("Producto creado correctamente");
+        } else {
+          toast.error(data.error || "Error al crear producto");
+        }
+      } catch {
+        toast.error("Error de conexión con el servidor");
+      }
+      setShowAddModal(false);
+      setForm({ nombre: "", precio: "", color: "", categoria: "lentes" });
+      return;
+    }
+    // MODO EDITAR: actualizar en DB vía PUT
+    await fetch(`/api/productos/${editingProductId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: form.nombre,
+        precio: Number(form.precio),
+        color: form.color,
+        categoria: form.categoria,
+      }),
+    });
+    // Actualizar customProducts localStorage
+    setCustomProducts((prev) => ({
+      ...prev,
+      [editingProductId]: {
+        nombre: form.nombre,
+        precio: Number(form.precio),
+        color: form.color,
+        categoria: form.categoria,
+      },
+    }));
+    setEditingProductId(null);
+    setShowAddModal(false);
     setForm({ nombre: "", precio: "", color: "", categoria: "lentes" });
+    toast.success("Producto actualizado correctamente");
   };
 
   const resetProduct = (id: string) => {
@@ -136,14 +211,9 @@ export default function AdminDashboard() {
   };
 
   const startEdit = (p: { id: string; nombre: string; precio: number; color: string; categoria: string }) => {
-    setEditingId(p.id);
-    const overridden = customProducts[p.id];
-    setForm({
-      nombre: overridden?.nombre ?? p.nombre,
-      precio: String(overridden?.precio ?? p.precio),
-      color: overridden?.color ?? p.color,
-      categoria: overridden?.categoria ?? p.categoria,
-    });
+    setEditingProductId(p.id);
+    setShowAddModal(true);
+    // Note: initialProduct se pasa en la JSX directamente usando editingProductId
   };
 
   const COLOR_MAP: Record<string, string> = {
@@ -283,10 +353,52 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
       </aside>
 
       <div className="flex-1 overflow-x-auto">
-        <div className="bg-[#008294] px-6 py-8">
-          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-          <p className="mt-1 text-[#C39A3C]">Panel de administración</p>
+        <div className="flex flex-col gap-4 bg-[#008294] px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+            <p className="mt-1 text-sm font-medium text-[#C39A3C]">Panel de administración</p>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center justify-center gap-2 self-start rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-[#008294] shadow-sm transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#008294] sm:self-auto"
+            aria-label="Añadir producto"
+          >
+            <Plus size={18} aria-hidden />
+            <span>Añadir producto</span>
+          </button>
         </div>
+        {showAddModal && (
+          <AddProductModal
+            onClose={() => setShowAddModal(false)}
+            onSave={(isEdit, productId) => {
+              if (isEdit) {
+                setCustomProducts((prev) => {
+                  const updated = { ...prev };
+                  if (editingProductId && updated[editingProductId]) {
+                    updated[editingProductId] = {
+                      nombre: form.nombre,
+                      precio: Number(form.precio),
+                      color: form.color,
+                      categoria: form.categoria,
+                    };
+                  }
+                  return updated;
+                });
+                setTab("products");
+              } else {
+                setTab("products");
+              }
+              setEditingProductId(null);
+              setShowAddModal(false);
+              setForm({ nombre: "", precio: "", color: "", categoria: "lentes" });
+            }}
+            initialProduct={
+              editingProductId
+                ? allProducts.find((prod) => prod.id === editingProductId)
+                : undefined
+            }
+          />
+        )}
 
         <div className="mx-auto max-w-7xl px-4 py-6">
           {tab === "stats" && (
@@ -320,7 +432,7 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
                 <tbody className="divide-y">
                   {allProducts.map((p) => (
                     <tr key={p.id} className="hover:bg-gray-50">
-                      {editingId === p.id ? (
+                      {editingProductId !== null && !showAddModal && editingProductId === p.id ? (
                         <>
                           <td className="px-4 py-3">
                             <input
@@ -365,13 +477,13 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
                           </td>
                           <td className="flex gap-2 px-4 py-3">
                             <button
-                              onClick={saveProduct}
+                              onClick={handleSave}
                               className="rounded bg-[#008294] px-3 py-1 text-xs font-medium text-white hover:bg-[#005f6b]"
                             >
                               Guardar
                             </button>
                             <button
-                              onClick={() => setEditingId(null)}
+                              onClick={() => setEditingProductId(null)}
                               className="rounded bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-300"
                             >
                               Cancelar
@@ -433,6 +545,14 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
 
           {tab === "orders" && (
             <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900">Pedidos</h2>
+                {lastUpdated && (
+                  <span className="text-xs text-gray-500">
+                    Última actualización: {lastUpdated.toLocaleTimeString("es-CO")}
+                  </span>
+                )}
+              </div>
               {orders.length === 0 ? (
                 <div className="rounded-xl bg-white p-12 text-center shadow-sm">
                   <ShoppingCart size={48} className="mx-auto mb-3 text-gray-300" />
@@ -442,15 +562,40 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
               ) : (
                 <div className="space-y-4">
                   {orders.map((order, idx) => (
-                    <div key={order.id} className="rounded-xl bg-white p-5 shadow-sm">
+                    <div
+                      key={order.id}
+                      className="rounded-xl bg-white p-5 shadow-sm"
+                    >
                       <div className="mb-3 flex items-center justify-between">
                         <div>
-                          <p className="font-semibold text-gray-900">Pedido #{idx + 1}</p>
-                          <p className="text-xs text-gray-500">{new Date(order.date).toLocaleDateString("es-CO")}</p>
+                          <p className="font-semibold text-gray-900">
+                            Pedido #{idx + 1} - {order.customerName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {order.customerEmail} | {order.customerPhone}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {order.customerCity === "" ? "Ciudad no especificada" : order.customerCity}
+                          </p>
                         </div>
-                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
-                          {formatPrice(order.total)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                              order.status === "pendiente"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : order.status === "confirmado"
+                                  ? "bg-green-100 text-green-700"
+                                  : order.status === "rechazado"
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {order.status}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {order.paymentProvider || "No especificado"}
+                          </span>
+                        </div>
                       </div>
                       <table className="w-full text-sm">
                         <thead>
@@ -463,7 +608,7 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
                         <tbody>
                           {order.items.map((item, i) => (
                             <tr key={i}>
-                              <td className="py-1 text-gray-700">{item.name}</td>
+                              <td className="py-1 text-gray-700">{item.productName}</td>
                               <td className="py-1 text-center text-gray-600">{item.quantity}</td>
                               <td className="py-1 text-right font-medium text-gray-900">
                                 {formatPrice(item.price * item.quantity)}

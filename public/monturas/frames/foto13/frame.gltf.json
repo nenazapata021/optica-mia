@@ -1,0 +1,211 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "OpticaMia Frame Builder"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Frame",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "FrameRoot",
+      "children": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "FrontFrame",
+      "mesh": 0,
+      "translation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LeftLens",
+      "mesh": 1,
+      "translation": [
+        -0.032,
+        0.002,
+        0.015
+      ]
+    },
+    {
+      "name": "RightLens",
+      "mesh": 1,
+      "translation": [
+        0.032,
+        0.002,
+        0.015
+      ]
+    },
+    {
+      "name": "LeftTemple",
+      "mesh": 2,
+      "translation": [
+        -0.075,
+        0.005,
+        0.01
+      ]
+    },
+    {
+      "name": "RightTemple",
+      "mesh": 2,
+      "translation": [
+        0.075,
+        0.005,
+        0.01
+      ],
+      "rotation": [
+        0,
+        3.141592653589793,
+        0
+      ]
+    },
+    {
+      "name": "NosePads",
+      "mesh": 3,
+      "translation": [
+        0,
+        0.008,
+        0.02
+      ]
+    }
+  ],
+  "meshes": [
+    {
+      "name": "FrontFrameMesh",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "TEXCOORD_0": 2
+          },
+          "material": 0
+        }
+      ]
+    },
+    {
+      "name": "LensMesh",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 4,
+            "NORMAL": 5,
+            "TEXCOORD_0": 6
+          },
+          "material": 1
+        }
+      ]
+    },
+    {
+      "name": "TempleMesh",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 8,
+            "NORMAL": 9,
+            "TEXCOORD_0": 10
+          },
+          "material": 0
+        }
+      ]
+    },
+    {
+      "name": "NosePadMesh",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 12,
+            "NORMAL": 13,
+            "TEXCOORD_0": 14
+          },
+          "material": 2
+        }
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "name": "FrameMaterial",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.18,
+          0.11,
+          0.08,
+          1
+        ],
+        "metallicFactor": 0,
+        "roughnessFactor": 0.25
+      },
+      "clearcoatFactor": 1,
+      "clearcoatRoughnessFactor": 0.08,
+      "doubleSided": true
+    },
+    {
+      "name": "LensMaterial",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0,
+          0,
+          0,
+          0.1
+        ],
+        "metallicFactor": 0,
+        "roughnessFactor": 0.02
+      },
+      "transmissionFactor": 0.95,
+      "thicknessFactor": 0.002,
+      "ior": 1.52,
+      "doubleSided": true
+    },
+    {
+      "name": "NosePadMaterial",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.96,
+          0.9,
+          0.83,
+          0.7
+        ],
+        "metallicFactor": 0,
+        "roughnessFactor": 0.5
+      },
+      "transmissionFactor": 0.3,
+      "thicknessFactor": 0.003,
+      "attenuationColor": [
+        1,
+        0.92,
+        0.82
+      ],
+      "attenuationDistance": 0.008,
+      "doubleSided": true
+    }
+  ],
+  "accessors": [],
+  "bufferViews": [],
+  "buffers": [
+    {
+      "byteLength": 0,
+      "uri": "frame.bin"
+    }
+  ]
+}

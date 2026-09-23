@@ -4,8 +4,29 @@ generator client {
   previewFeatures = []
 }
 
+enum PaymentProvider {
+  WOMPI
+  ADDI
+  SISTECREDITO
+}
+
+enum OrderStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  ERROR
+}
+
 datasource db {
   provider = "postgresql"
+}
+
+enum ImageAngle {
+  FRONTAL
+  LATERAL_DERECHO
+  LATERAL_IZQUIERDO
+  TRES_CUARTOS
+  DETALLE
 }
 
 model Product {
@@ -20,9 +41,25 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  images     ProductImage[]
   orderItems OrderItem[]
   favorites  Favorite[]
   motor      Motor?
+}
+
+model ProductImage {
+  id        String     @id @default(cuid())
+  productId String
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  angle     ImageAngle @default(FRONTAL)
+  alt       String?
+  sortOrder Int        @default(0)
+  createdAt DateTime   @default(now())
+
+  @@index([productId, sortOrder])
+  @@unique([productId, sortOrder])
+  @@map("product_images")
 }
 
 model Customer {
@@ -36,15 +73,47 @@ model Customer {
 
   orders    Order[]
   favorites Favorite[]
+  photos    ClientPhoto[]
+}
+
+model ClientPhoto {
+  id         String   @id @default(cuid())
+  storageKey String   @unique
+  url        String
+  mimeType   String   @default("image/png")
+  sizeBytes  Int
+  width      Int      @default(1024)
+  height     Int      @default(1024)
+  data       Bytes
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@map("client_photos")
+  @@index([customerId])
 }
 
 model Order {
   id              String      @id @default(cuid())
   customerId      String
   customer        Customer    @relation(fields: [customerId], references: [id])
-  total           Float
-  status          String      @default("pendiente")
-  paymentMethod   String?
+
+  // Datos del cliente y monto (si no existen ya en la BD)
+  totalInCents    Float       @map("total")
+  customerName    String      @default("")
+  customerEmail   String      @default("")
+  customerPhone   String      @default("")
+  customerCity    String      @default("")
+
+  // Validación logística: solo se vende dentro de Medellín/Itagüí
+  cityValidated   Boolean     @default(false)
+
+  // Campos de pago unificados para Wompi/Addi/Sistecredito
+  paymentProvider PaymentProvider
+  paymentMethod   String?                          // Solo aplica si paymentProvider = WOMPI, valores: CARD, NEQUI, PSE
+  externalId      String?                          // ID de transacción en el proveedor externo
+  status          String      @default("PENDING") // Usado por el dashboard: "pendiente" | "confirmado" | "rechazado"
+
   transactionId   String?     @unique
   wompiStatus     String?
   createdAt       DateTime    @default(now())

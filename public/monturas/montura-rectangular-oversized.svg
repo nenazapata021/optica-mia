@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" width="320" height="180">
+  <defs>
+    <linearGradient id="reflejo-lente" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.65" />
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+    <radialGradient id="brillo-lente" cx="50%" cy="15%" r="55%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+    <clipPath id="clip-lente-izq">
+      <rect x="30" y="56" width="110" height="68" rx="10" />
+    </clipPath>
+    <clipPath id="clip-lente-der">
+      <rect x="180" y="56" width="110" height="68" rx="10" />
+    </clipPath>
+  </defs>
+
+  <!-- Lente izquierdo - relleno de cristal -->
+  <rect x="30" y="56" width="110" height="68" rx="10" fill="rgba(195,215,225,0.12)" />
+
+  <!-- Reflejo de luz - lente izquierdo -->
+  <g clip-path="url(#clip-lente-izq)">
+    <ellipse cx="85" cy="62" rx="48" ry="30" fill="url(#reflejo-lente)" />
+    <ellipse cx="72" cy="68" rx="20" ry="10" fill="url(#brillo-lente)" />
+    <rect x="30" y="56" width="110" height="20" fill="url(#reflejo-lente)" />
+  </g>
+
+  <!-- Borde montura - lente izquierdo -->
+  <rect x="30" y="56" width="110" height="68" rx="10" fill="none" stroke="#1a1a1a" stroke-width="5.5" />
+
+  <!-- Lente derecho - relleno de cristal -->
+  <rect x="180" y="56" width="110" height="68" rx="10" fill="rgba(195,215,225,0.12)" />
+
+  <!-- Reflejo de luz - lente derecho -->
+  <g clip-path="url(#clip-lente-der)">
+    <ellipse cx="235" cy="62" rx="48" ry="30" fill="url(#reflejo-lente)" />
+    <ellipse cx="248" cy="68" rx="20" ry="10" fill="url(#brillo-lente)" />
+    <rect x="180" y="56" width="110" height="20" fill="url(#reflejo-lente)" />
+  </g>
+
+  <!-- Borde montura - lente derecho -->
+  <rect x="180" y="56" width="110" height="68" rx="10" fill="none" stroke="#1a1a1a" stroke-width="5.5" />
+
+  <!-- Puente nasal doble - línea superior -->
+  <line x1="140" y1="80" x2="180" y2="80" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" />
+
+  <!-- Puente nasal doble - línea inferior -->
+  <line x1="140" y1="100" x2="180" y2="100" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" />
+
+  <!-- Conexiones del puente con la montura -->
+  <line x1="140" y1="80" x2="140" y2="100" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" />
+  <line x1="180" y1="80" x2="180" y2="100" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" />
+</svg>

@@ -35,6 +35,7 @@ export const productosLentes = [
     precio: 120000,
     color: "Vino",
     imagen: foto1,
+    imageSide: foto1,
     categoria: "mujer",
   },
   {
@@ -43,6 +44,7 @@ export const productosLentes = [
     precio: 120000,
     color: "Marrón rosado",
     imagen: foto2,
+    imageSide: foto2,
     categoria: "hombre",
   },
   {
@@ -51,6 +53,7 @@ export const productosLentes = [
     precio: 120000,
     color: "Dorado",
     imagen: foto3,
+    imageSide: foto3,
     categoria: "mujer",
   },
   {
@@ -59,6 +62,7 @@ export const productosLentes = [
     precio: 135000,
     color: "Dorado claro",
     imagen: foto4,
+    imageSide: foto4,
     categoria: "hombre",
   },
   {
@@ -67,6 +71,7 @@ export const productosLentes = [
     precio: 95000,
     color: "Rosa palo translúcido",
     imagen: foto5,
+    imageSide: foto5,
     categoria: "ninos",
   },
   {
@@ -75,6 +80,7 @@ export const productosLentes = [
     precio: 150000,
     color: "Rojo vino translúcido",
     imagen: foto6,
+    imageSide: foto6,
     scaleMultiplier: 0.95,
     categoria: "mujer",
   },
@@ -84,6 +90,7 @@ export const productosLentes = [
     precio: 140000,
     color: "Carey/habana",
     imagen: foto7,
+    imageSide: foto7,
     categoria: "mujer",
   },
   {
@@ -92,6 +99,7 @@ export const productosLentes = [
     precio: 140000,
     color: "Negro",
     imagen: foto8,
+    imageSide: foto8,
     categoria: "hombre",
   },
   {
@@ -100,6 +108,7 @@ export const productosLentes = [
     precio: 130000,
     color: "Plateado",
     imagen: foto9,
+    imageSide: foto9,
     categoria: "mujer",
   },
   {
@@ -108,6 +117,7 @@ export const productosLentes = [
     precio: 85000,
     color: "Azul translúcido",
     imagen: foto10,
+    imageSide: foto10,
     categoria: "ninos",
   },
   {
@@ -116,6 +126,7 @@ export const productosLentes = [
     precio: 155000,
     color: "Café",
     imagen: foto11,
+    imageSide: foto11,
     categoria: "hombre",
   },
   {
@@ -124,6 +135,7 @@ export const productosLentes = [
     precio: 170000,
     color: "Negro mate",
     imagen: foto12,
+    imageSide: foto12,
     categoria: "mujer",
   },
   {
@@ -132,6 +144,7 @@ export const productosLentes = [
     precio: 160000,
     color: "Plateado",
     imagen: foto13,
+    imageSide: foto13,
     categoria: "hombre",
   },
   {
@@ -140,6 +153,7 @@ export const productosLentes = [
     precio: 120000,
     color: "Gris translúcido",
     imagen: foto14,
+    imageSide: foto14,
     categoria: "mujer",
   },
   {
@@ -148,6 +162,7 @@ export const productosLentes = [
     precio: 180000,
     color: "Dorado",
     imagen: foto15,
+    imageSide: foto15,
     scaleMultiplier: 1.05,
     categoria: "hombre",
   },
@@ -157,6 +172,7 @@ export const productosLentes = [
     precio: 145000,
     color: "Plateado",
     imagen: foto16,
+    imageSide: foto16,
     categoria: "hombre",
   },
   {
@@ -165,6 +181,7 @@ export const productosLentes = [
     precio: 110000,
     color: "Dorado rosado",
     imagen: foto17,
+    imageSide: foto17,
     categoria: "mujer",
   },
   {
@@ -173,6 +190,7 @@ export const productosLentes = [
     precio: 165000,
     color: "Negro brillante",
     imagen: foto18,
+    imageSide: foto18,
     categoria: "hombre",
   },
   {
@@ -181,6 +199,7 @@ export const productosLentes = [
     precio: 150000,
     color: "Negro",
     imagen: foto19,
+    imageSide: foto19,
     categoria: "mujer",
   },
   {
@@ -189,6 +208,7 @@ export const productosLentes = [
     precio: 175000,
     color: "Dorado",
     imagen: foto20,
+    imageSide: foto20,
     categoria: "hombre",
   },
   {
@@ -197,6 +217,7 @@ export const productosLentes = [
     precio: 135000,
     color: "Negro",
     imagen: foto21,
+    imageSide: foto21,
     categoria: "mujer",
   },
 ];
@@ -208,6 +229,7 @@ export const productosGafasSol = [
     precio: 210000,
     color: "Negro",
     imagen: gafasDeSol1,
+    imageSide: gafasDeSol1,
     categoria: "sol"
   },
   {
@@ -216,6 +238,7 @@ export const productosGafasSol = [
     precio: 135000,
     color: "Carey",
     imagen: gafasDeSol2,
+    imageSide: gafasDeSol2,
     categoria: "sol"
   },
   {
@@ -224,6 +247,7 @@ export const productosGafasSol = [
     precio: 160000,
     color: "Negro",
     imagen: gafasDeSol3,
+    imageSide: gafasDeSol3,
     categoria: "sol"
   },
   {
@@ -232,6 +256,7 @@ export const productosGafasSol = [
     precio: 145000,
     color: "Azul",
     imagen: gafasDeSol4,
+    imageSide: gafasDeSol4,
     categoria: "sol"
   },
   {
@@ -240,6 +265,7 @@ export const productosGafasSol = [
     precio: 120000,
     color: "Plata",
     imagen: gafasDeSol5,
+    imageSide: gafasDeSol5,
     categoria: "sol"
   },
   {
@@ -248,6 +274,7 @@ export const productosGafasSol = [
     precio: 130000,
     color: "Dorado",
     imagen: gafasDeSol6,
+    imageSide: gafasDeSol6,
     categoria: "sol"
   },
   {
@@ -256,6 +283,7 @@ export const productosGafasSol = [
     precio: 155000,
     color: "Dorado",
     imagen: gafasRedondas,
+    imageSide: gafasRedondas,
     categoria: "sol"
   },
 ];

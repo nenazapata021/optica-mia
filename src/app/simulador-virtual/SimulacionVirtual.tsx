@@ -101,18 +101,31 @@ export default function SimulacionVirtual() {
           {/* Probador virtual - Columna principal */}
           <div className="lg:col-span-3">
             <div className="sticky top-20">
+              <div className="rounded-xl bg-[#e0f2f4] px-3 py-2 mb-3 flex items-start gap-2">
+                <div className="h-2 w-2 rounded-full bg-green-500 mt-1.5 animate-pulse" aria-hidden />
+                <p className="text-xs text-[#005f6b]"><span className="font-semibold">Probador activo:</span> mueve la cabeza suavemente. Si no detecta rostro, acércate a la luz o <a href="/lentes" className="underline font-semibold">elige sin probador</a>.</p>
+              </div>
               <VirtualTryOn
           glassesFrontalImageUrl={datos.producto.image}
-          glassesTempleLeftImageUrl={datos.producto.image}
-          glassesTempleRightImageUrl={datos.producto.image}
           faceSrc={datos.fotoUrl}
           scaleMultiplier={datos.producto.scaleMultiplier}
         />
 
-              <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-400">
-                <div className="h-1.5 w-1.5 rounded-full bg-green-400" />
-                El motor detecta tu rostro y superpone la montura sobre tus ojos
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-white border p-3 text-center">
+                  <p className="text-xs text-gray-500">Precio</p>
+                  <p className="font-bold text-[#008294]">IVA incluido</p>
+                </div>
+                <div className="rounded-xl bg-white border p-3 text-center">
+                  <p className="text-xs text-gray-500">Envío</p>
+                  <p className="font-bold text-green-600">Gratis*</p>
+                </div>
+                <div className="rounded-xl bg-white border p-3 text-center">
+                  <p className="text-xs text-gray-500">Financiación</p>
+                  <p className="font-bold text-gray-700 text-xs">Addi/Sistecredito</p>
+                </div>
               </div>
+              <p className="text-[11px] text-center text-gray-400 mt-2">* Solo Medellín e Itagüí • Cambios sin probador disponibles</p>
             </div>
           </div>
 

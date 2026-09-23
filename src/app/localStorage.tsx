@@ -1,9 +1,11 @@
-// const [cart, setCart] = useState([]);
+import { useEffect, useState } from "react";
 
-// useEffect(() => {
-//     const storedCart = localStorage.getItem("opticamia_cart");
+const [cart, setCart] = useState([]);
 
-//     if (storedCart) {
-//         setCart(JSON.parse(storedCart));
-//     }
-// }, []);
+useEffect(() => {
+    const storedCart = localStorage.getItem("opticamia_cart");
+
+    if (storedCart) {
+        setCart(JSON.parse(storedCart));
+    }
+}, []);

@@ -4,9 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { X, Loader2, CheckCircle, AlertCircle, Clock } from "lucide-react";
-import { useCart, type CartItem } from "../context/CartContextType";
+import { useCart } from "../context/CartContextType";
+import WhatsAppCheckoutButton from "../whatsapp/WhatsAppCheckoutButton";
+import type { WhatsAppOrderData } from "../whatsapp/WhatsAppCheckoutButton";
+import BreBPayment from "../../components/checkout/BreBPayment";
 
-type PaymentMethodType = "NEQUI" | "ADDI" | "SISTECREDITO";
+type PaymentMethodType = "BREB" | "ADDI" | "SISTECREDITO";
 
 interface PaymentModalProps {
   customerId: string;
@@ -28,10 +31,10 @@ const PAYMENT_METHODS: {
   icon: string;
 }[] = [
   {
-    type: "NEQUI",
-    label: "Nequi",
-    description: "Paga con Nequi, escanea el código QR",
-    icon: "/icons/nequi.svg",
+    type: "BREB",
+    label: "Bre-B",
+    description: "Transferencia inmediata con tu llave Bre-B",
+    icon: "/icons/breb.svg",
   },
   {
     type: "ADDI",
@@ -47,28 +50,6 @@ const PAYMENT_METHODS: {
   },
 ];
 
-const WHATSAPP_NUMBER = "573017391219";
-
-function buildWhatsappUrl(
-  method: PaymentMethodType,
-  customerName: string,
-  items: CartItem[],
-  orderId: string | null
-): string {
-  const metodo = method === "ADDI" ? "Addi" : "Sistecredito";
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const productLines = items
-    .map((item) => `- ${item.name} x${item.quantity} $${item.price.toLocaleString("es-CO")}`)
-    .join("\n");
-  const message =
-    `Hola, quiero comprar con ${metodo}.\n` +
-    `Cliente: ${customerName}\n` +
-    (orderId ? `Número de pedido: ${orderId}\n` : "") +
-    `Productos:\n${productLines}\n` +
-    `Total: $${total.toLocaleString("es-CO")}`;
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-}
-
 export default function PaymentModal({
   customerId,
   customerInfo,
@@ -76,25 +57,28 @@ export default function PaymentModal({
   onComplete,
 }: PaymentModalProps) {
   const { cartItems, clearCart } = useCart();
-  const [step, setStep] = useState<"select" | "processing" | "qr" | "success" | "error" | "whatsapp">("select");
+  const [step, setStep] = useState<"select" | "processing" | "qr" | "success" | "error" | "whatsapp" | "breb">("select");
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [nequiQrUrl, setNequiQrUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [pollCount, setPollCount] = useState(0);
-
-  const isCreditMethod =
-    selectedMethod === "ADDI" || selectedMethod === "SISTECREDITO";
-  const whatsappUrl =
-    isCreditMethod && customerInfo
-      ? buildWhatsappUrl(selectedMethod, customerInfo.full_name, cartItems, orderId)
-      : null;
+  const [whatsappOrderData, setWhatsappOrderData] = useState<WhatsAppOrderData | null>(null);
 
   const handleSelectMethod = async (method: PaymentMethodType) => {
     setSelectedMethod(method);
-    setStep("processing");
     setErrorMsg("");
+
+    // BRE-B: mostrar llave directamente sin llamar a la API (pago inmediato manual)
+    if (method === "BREB") {
+      setStep("breb");
+      return;
+    }
+
+    setStep("processing");
+
+    // Solo Addi/Sistecredito requieren phone validation y API call
 
     try {
       const items = cartItems.map((item) => ({
@@ -103,6 +87,8 @@ export default function PaymentModal({
         price: item.price,
       }));
 
+      // Todos los métodos (Nequi, Addi, Sistecredito) pasan por /api/wompi/create-transaction
+      // que crea la orden en la BD y retorna requiresWhatsApp para Addi/Sistecredito
       const res = await fetch("/api/wompi/create-transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -121,14 +107,20 @@ export default function PaymentModal({
 
       const data = await res.json();
 
-      setTransactionId(data.transaction.id);
-      setOrderId(data.orderId ?? null);
-
-      if (method === "NEQUI" && data.transaction.nequiQrUrl) {
-        setNequiQrUrl(data.transaction.nequiQrUrl);
-        setStep("qr");
-      } else if (method === "ADDI" || method === "SISTECREDITO") {
+      if (data.requiresWhatsApp) {
+        // ADDI / SISTECREDITO: mostrar bloque inline de WhatsApp
+        setOrderId(data.orderId ?? null);
+        setWhatsappOrderData({
+          products: cartItems.map((item) => item.name),
+          quantities: cartItems.map((item) => item.quantity),
+          total: cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+          customerName: customerInfo.full_name,
+          paymentMethod: method as "ADDI" | "SISTECREDITO",
+        });
         setStep("whatsapp");
+      } else if (data.transactionId) {
+        setTransactionId(data.transactionId);
+        setStep("success");
       } else {
         setStep("success");
       }
@@ -151,11 +143,20 @@ export default function PaymentModal({
       if (data.transaction.status === "APPROVED") {
         setStep("success");
         clearCart();
+      } else if (data.transaction.status === "DECLINED") {
+        setErrorMsg(
+          selectedMethod === "ADDI"
+            ? "Addi rechazó la transacción. Intenta con otro método o contacta soporte."
+            : selectedMethod === "SISTECREDITO"
+              ? "Sistecredito rechazó la transacción. Intenta con otro método o contacta soporte."
+              : "El pago fue rechazado"
+        );
+        setStep("error");
       }
     } catch {
       // silent
     }
-  }, [transactionId, clearCart]);
+  }, [transactionId, clearCart, selectedMethod]);
 
   useEffect(() => {
     if (step !== "qr" || !transactionId) return;
@@ -186,40 +187,47 @@ export default function PaymentModal({
         {/* Selección de método */}
         {step === "select" && (
           <>
-            <h2 className="mb-2 text-2xl font-bold text-gray-800">
-              Método de pago
+            <div className="flex items-center gap-2 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-3 py-1 w-fit mb-3">🔒 Pago 100% seguro con Wompi</div>
+            <h2 className="mb-1 text-2xl font-bold text-gray-800">
+              Elige cómo pagar
             </h2>
-            <p className="mb-6 text-sm text-gray-500">
-              Selecciona cómo deseas pagar tu pedido.
+            <p className="mb-5 text-sm text-gray-500">
+              Todos con IVA incluido. Después te confirmamos por WhatsApp.
             </p>
             <div className="flex flex-col gap-3">
               {PAYMENT_METHODS.map((method) => (
                 <button
                   key={method.type}
                   onClick={() => handleSelectMethod(method.type)}
-                  className="flex items-center gap-4 rounded-xl border border-gray-200 p-4 text-left transition hover:border-[#D4AF37] hover:shadow-md"
+                  className="flex items-center gap-4 rounded-xl border-2 border-gray-200 p-4 text-left transition hover:border-[#008294] hover:bg-[#e0f2f4]/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#008294] min-h-[72px]"
                 >
-                  <div className="flex h-12 w-24 shrink-0 items-center justify-center rounded-lg bg-gray-50 p-1.5">
+                  <div className="flex h-12 w-20 shrink-0 items-center justify-center rounded-lg bg-white border p-1.5">
                     <Image
                       src={method.icon}
                       alt={method.label}
-                      width={96}
-                      height={40}
+                      width={80}
+                      height={32}
                       className="h-full w-auto object-contain"
                       unoptimized
                     />
                   </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-800">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-800 flex items-center gap-2">
                       {method.label}
+                      {method.type==="BREB" && <span className="text-[11px] font-semibold bg-[#e0f2f4] text-[#005f6b] px-2 py-0.5 rounded-full">Recomendado</span>}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 leading-tight">
                       {method.description}
                     </p>
+                    <p className="text-xs text-gray-400">
+                      {method.type==="BREB" ? "Llave • Inmediato" : method.type==="ADDI" ? "Cuotas • Te llevamos a WhatsApp" : "Crédito • Te llevamos a WhatsApp"}
+                    </p>
                   </div>
+                  <span className="text-gray-300" aria-hidden>›</span>
                 </button>
               ))}
             </div>
+            <p className="text-xs text-center text-gray-400 mt-3">Solo enviamos a Medellín e Itagüí • ¿Fuera de zona? Escríbenos antes de pagar</p>
           </>
         )}
 
@@ -231,7 +239,7 @@ export default function PaymentModal({
               Procesando pago...
             </h3>
             <p className="mt-2 text-sm text-gray-500">
-              Estamos generando tu transacción con {selectedMethod === "NEQUI" ? "Nequi" : selectedMethod === "ADDI" ? "Addi" : "Sistecredito"}.
+              Estamos generando tu transacción con {selectedMethod === "BREB" ? "Bre-B" : selectedMethod === "ADDI" ? "Addi" : "Sistecredito"}.
             </p>
           </div>
         )}
@@ -263,30 +271,21 @@ export default function PaymentModal({
           </div>
         )}
 
-        {/* Segundo paso: Addi / Sistecredito por WhatsApp */}
-        {step === "whatsapp" && (
-          <div className="flex flex-col py-4 text-center">
-            <h3 className="mb-2 text-xl font-bold text-gray-800">
-              Finaliza tu compra por WhatsApp
-            </h3>
-            <p className="mb-6 text-sm text-gray-500">
-              Para finalizar tu compra con Addi o Sistecredito, un asesor te va a
-              atender por WhatsApp.
-            </p>
-            <a
-              href={whatsappUrl ?? "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-3 rounded-xl border border-[#D4AF37] p-4 text-base font-semibold text-gray-800 transition hover:border-[#C39C4E] hover:bg-[#FBF7EC]"
-            >
-              <svg viewBox="0 0 24 24" fill="#25D366" width="24" height="24" aria-hidden="true">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-              </svg>
-              Continuar por WhatsApp
-            </a>
+        {/* Addi / Sistecredito: WhatsApp inline */}
+        {step === "whatsapp" && whatsappOrderData && (
+          <WhatsAppCheckoutButton
+            orderData={whatsappOrderData}
+            onBack={() => setStep("select")}
+          />
+        )}
+
+        {/* Bre-B: pago inmediato con llave */}
+        {step === "breb" && (
+          <div>
+            <BreBPayment amount={cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)} />
             <button
               onClick={() => setStep("select")}
-              className="mt-4 text-sm font-medium text-gray-500 underline hover:text-gray-700"
+              className="mt-4 w-full text-center text-sm font-medium text-gray-500 underline hover:text-gray-700"
             >
               Volver
             </button>
@@ -301,49 +300,47 @@ export default function PaymentModal({
               ¡Pago exitoso!
             </h3>
             <p className="mt-2 text-sm text-gray-500">
-              {whatsappUrl
-                ? `Completa tu compra con ${selectedMethod === "ADDI" ? "Addi" : "Sistecredito"} escríbenos por WhatsApp.`
-                : "Tu pedido ha sido confirmado. Te contactaremos pronto."}
+              Tu pedido ha sido confirmado. Te contactaremos pronto.
             </p>
-            {whatsappUrl && (
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 flex items-center justify-center gap-2 rounded-lg bg-[#25D366] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#20BD5C]"
-              >
-                <svg viewBox="0 0 24 24" fill="white" width="18" height="18" aria-hidden="true">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                </svg>
-                Continuar por WhatsApp
-              </a>
-            )}
-            {!whatsappUrl && (
-              <Link
-                href="/"
-                onClick={handleFinish}
-                className="mt-6 rounded-lg bg-[#D4AF37] px-6 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-[#C39C4E]"
-              >
-                Volver al inicio
-              </Link>
-            )}
+            <Link
+              href="/"
+              onClick={handleFinish}
+              className="mt-6 rounded-lg bg-[#D4AF37] px-6 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-[#C39C4E]"
+            >
+              Volver al inicio
+            </Link>
           </div>
         )}
 
         {/* Error */}
         {step === "error" && (
-          <div className="flex flex-col items-center py-8 text-center">
-            <AlertCircle size={56} className="text-red-500" />
-            <h3 className="mt-4 text-xl font-bold text-gray-800">
-              Error en el pago
+          <div className="flex flex-col items-center py-6 text-center">
+            <AlertCircle size={48} className="text-red-500" />
+            <h3 className="mt-3 text-xl font-bold text-gray-800">
+              No pudimos procesar tu pago
             </h3>
-            <p className="mt-2 text-sm text-red-500">{errorMsg}</p>
-            <button
-              onClick={() => setStep("select")}
-              className="mt-6 rounded-lg bg-[#D4AF37] px-6 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-[#C39C4E]"
-            >
-              Intentar de nuevo
-            </button>
+            <p className="mt-2 text-sm text-gray-600 max-w-sm">
+              {errorMsg 
+                ? errorMsg.includes("Nequi") 
+                  ? "Verifica tu número de teléfono (10 dígitos, ej. 3001234567) y vuelve a intentar." 
+                  : errorMsg.includes("rechazado") 
+                    ? `Tu pago con ${selectedMethod === "ADDI" ? "Addi" : "Sistecredito"} fue rechazado. Prueba con Bre-B o escribe a WhatsApp y te ayudamos a financiar.` 
+                    : errorMsg.includes("Producto no existe")
+                      ? "Una montura de tu carrito ya no está disponible. Vuelve al catálogo y agrégala de nuevo."
+                      : errorMsg 
+                    : "Hubo un error temporal. Intenta de nuevo o paga por Bre-B."}
+            </p>
+            <div className="mt-4 flex flex-col gap-2 w-full">
+              <button
+                onClick={() => setStep("select")}
+                className="rounded-xl bg-[#008294] px-6 py-3 text-sm font-bold text-white hover:bg-[#005f6b] min-h-[44px]"
+              >
+                Probar otro método
+              </button>
+              <a href="https://wa.me/573017391219" target="_blank" rel="noopener noreferrer" className="rounded-xl border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 text-center min-h-[44px] flex items-center justify-center">
+                Hablar por WhatsApp
+              </a>
+            </div>
           </div>
         )}
       </div>

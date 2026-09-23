@@ -14,6 +14,8 @@ export const TRY_ON_CONFIG = {
     rightEyeIndices: [362, 263, 386, 374, 380, 381, 382, 384, 385, 387, 388, 390] as readonly number[],
     leftIrisIndices: [468, 469, 470, 471, 472] as readonly number[],
     rightIrisIndices: [473, 474, 475, 476, 477] as readonly number[],
+    /** Inner eye corner landmarks: 133 (left), 362 (right) — used for bridge center. */
+    innerEyeCornerIndices: { left: 133, right: 362 } as const,
     noseBridgeIndices: [6, 197, 195, 5, 168] as readonly number[],
     faceOvalIndices: [
       10, 338, 297, 332, 284, 251, 389, 356, 454, 323,
@@ -46,6 +48,8 @@ export const TRY_ON_CONFIG = {
     minOpacity: 0.15,
     /** Maximum opacity (when fully facing the viewer). */
     maxOpacity: 0.95,
+    /** Margin factor for temple-to-temple width (1.10 = montura cubre todo el ancho del rostro + 10%). */
+    templeMarginFactor: 1.1,
   },
   liveEngine: {
     /** Vista espejada estilo selfie (el video se muestra con scaleX(-1)). */
@@ -110,5 +114,22 @@ export const TRY_ON_CONFIG = {
     cameraNotFound: "No encontramos una cámara conectada a tu dispositivo.",
     modelErrorLive: "No se pudo cargar el motor de detección facial. Verifica tu conexión e inténtalo de nuevo.",
     noFaceLive: "No detectamos tu rostro. Ubícate de frente a la cámara con buena iluminación.",
+  },
+  webgl: {
+    enabled: true,
+    forceFallback: false,
+    mobileHDRSize: 256,
+    desktopHDRSize: 512,
+    maxFrameTimeMs: 16,
+    enableHairOcclusion: true,
+    enableContactShadows: true,
+    enableChromaticAberration: true,
+    enableSubsurface: true,
+    enableColorGrading: true,
+    enableVignette: false,
+    vignetteIntensity: 0.15,
+    defaultEnvironmentMap: "/environments/studio_small_09_1k.hdr",
+    framesBaseUrl: "/monturas/frames",
+    assetValidation: true,
   },
 } as const;

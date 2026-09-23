@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "../context/CartContextType";
 import { useFavorites } from "../context/FavoritesContext";
@@ -9,26 +8,31 @@ import { type Producto } from "../types/producto";
 import { toast } from "sonner";
 import { Heart, Share2, ShoppingCart, Check, ScanFace } from "lucide-react";
 import ModalProbador from "../modal probador/modalProbador";
+import ProductGallery from "../components/ProductGallery";
+import { normalizeProductImages } from "../utils/productImages";
 
 interface DetalleProductoProps {
   producto: Producto;
 }
 
 export default function DetalleProducto({ producto }: DetalleProductoProps) {
-  const [imagenPrincipal, setImagenPrincipal] = useState(Array.isArray(producto.image) ? producto.image[0] : producto.image);
   const [colorSeleccionado, setColorSeleccionado] = useState(producto.color?.split('/')[0]);
-  const [mostrarModal, setMostrarModal] = useState(false); // Estado para el modal
-  
+  const [mostrarModal, setMostrarModal] = useState(false);
+
+  const galleryImages = useMemo(() => normalizeProductImages(producto), [producto]);
+
 const { addToCart } = useCart();
    const { toggleFavorite, isFavorite } = useFavorites();
    const router = useRouter();
 
-  if (!producto) return null; // Guarda por si el producto no llega
+  if (!producto) return null;
 
   const handleAddToCart = () => {
-    const productoParaCarrito = {
+    const mainUrl = galleryImages[0]?.url ?? (Array.isArray(producto.image) ? producto.image[0] : producto.image);
+    const productoParaCarrito: Producto = {
       ...producto,
-      image: Array.isArray(producto.image) ? producto.image[0] : producto.image,
+      image: mainUrl as never,
+      images: galleryImages,
     };
     addToCart(productoParaCarrito);
     toast.success(`${producto.name} agregado al carrito!`, {
@@ -48,40 +52,8 @@ const { addToCart } = useCart();
     <div className="bg-slate-50">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
-          {/* Columna Izquierda: Galería de Imágenes */}
-          <div className="flex flex-col gap-4">
-            <div className="relative aspect-square w-full overflow-hidden rounded-2xl border-2 border-slate-200 bg-white shadow-sm">
-              <Image
-                src={imagenPrincipal}
-                alt={`Imagen principal de ${producto.name}`}
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-contain transition-transform duration-300 hover:scale-105"
-              />
-            </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-              {Array.isArray(producto.image) && producto.image.map((img, index) => (
-                <button
-                  key={index}
-                  onClick={() => setImagenPrincipal(img)}
-                  className={`relative aspect-square w-full rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                    (typeof imagenPrincipal === "string" ? imagenPrincipal : imagenPrincipal.src) === (typeof img === "string" ? img : img.src)
-                      ? "border-[#008294] ring-2 ring-[#008294]/50"
-                      : "border-slate-200 hover:border-slate-400"
-                  }`}
-                >
-                  <Image
-                    src={img}
-                    alt={`Miniatura ${index + 1} de ${producto.name}`}
-                    fill
-                    sizes="25vw"
-                    className="object-contain"
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* Columna Izquierda: Galería de Imágenes — 55-60% ancho en desktop */}
+          <ProductGallery images={galleryImages} productName={producto.name} className="w-full" />
 
           {/* Columna Derecha: Información del Producto */}
           <div className="flex flex-col">

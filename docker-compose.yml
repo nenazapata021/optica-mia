@@ -41,6 +41,8 @@ services:
       WOMPI_PRIVATE_KEY: ${WOMPI_PRIVATE_KEY:-}
       WOMPI_INTEGRITY_KEY: ${WOMPI_INTEGRITY_KEY:-}
       WOMPI_EVENT_SECRET: ${WOMPI_EVENT_SECRET:-}
+      NEXT_PUBLIC_BREB_KEY: ${NEXT_PUBLIC_BREB_KEY:-@MGA313}
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
     depends_on:
       postgres:
         condition: service_healthy

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       });
       let status = order?.wompiStatus ?? "PENDING";
 
-      if (order?.paymentMethod === "NEQUI" && status !== "APPROVED") {
+      if (order?.paymentProvider === "WOMPI" && status !== "APPROVED") {
         const elapsed = Date.now() - new Date(order.createdAt).getTime();
         if (elapsed >= DEMO_NEQUI_APPROVE_DELAY_MS) {
           status = "APPROVED";
@@ -48,6 +48,16 @@ export async function GET(request: NextRequest) {
       await prisma.order.updateMany({
         where: { transactionId },
         data: { status: "confirmado" },
+      });
+    } else if (wompiTx.data.status === "DECLINED") {
+      await prisma.order.updateMany({
+        where: { transactionId },
+        data: { status: "rechazado" },
+      });
+    } else if (wompiTx.data.status === "ERROR") {
+      await prisma.order.updateMany({
+        where: { transactionId },
+        data: { status: "error" },
       });
     }
 
