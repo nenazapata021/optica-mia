@@ -31,8 +31,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Customer no encontrado. Verifica el email único." }, { status: 404 });
     }
 
-    // Leer buffer del archivo
+    if (file.size > 8 * 1024 * 1024) {
+      return NextResponse.json({ error: "Archivo demasiado grande (máx 8MB)." }, { status: 400 });
+    }
+    // Validar magic bytes primeras muestras (no solo MIME)
     const inputBuffer = Buffer.from(await file.arrayBuffer());
+    const header = inputBuffer.subarray(0, 8);
+    const isJpeg = header[0] === 0xff && header[1] === 0xd8;
+    const isPng = header[0] === 0x89 && header.toString("ascii", 1, 4) === "PNG";
+    const isWebp = header.toString("ascii", 0, 4) === "RIFF";
+    if (!isJpeg && !isPng && !isWebp) {
+      return NextResponse.json({ error: "Archivo no es imagen válida." }, { status: 400 });
+    }
 
     // Normalizar server-side con sharp: cover crop centrado + resize 1024×1024 PNG
     let normalized;
@@ -75,7 +85,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const customerId = searchParams.get("customerId");
 
-  if (!customerId) {
+  if (!customerId || customerId.length > 64) {
     return NextResponse.json({ error: "customerId requerido" }, { status: 400 });
   }
 

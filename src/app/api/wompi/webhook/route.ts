@@ -5,7 +5,10 @@ import { prisma } from "@/lib/prisma";
 const WOMPI_EVENT_SECRET = process.env.WOMPI_EVENT_SECRET ?? "";
 
 function verifyWompiWebhook(body: Record<string, unknown>): boolean {
-  if (!WOMPI_EVENT_SECRET) return true;
+  if (!WOMPI_EVENT_SECRET) {
+    console.error("[SECURITY] WOMPI_EVENT_SECRET no configurado — webhook rechazado (fail-closed)");
+    return false;
+  }
 
   const signature = body.signature as
     | { properties: string[]; checksum: string }

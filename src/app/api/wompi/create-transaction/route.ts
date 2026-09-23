@@ -39,7 +39,27 @@ export async function POST(req: Request) {
   }
 
   try {
-    if (!customerId || !items?.length || !paymentMethod?.type || !customerInfo) {
+    // Validación estricta de tipos permitidos
+    const allowedMethods = ["NEQUI", "ADDI", "SISTECREDITO"] as const;
+    if (!customerId || typeof customerId !== "string" || customerId.length > 50) {
+      return Response.json({ error: "customerId inválido" }, { status: 400 });
+    }
+    if (!items?.length || !Array.isArray(items) || items.length > 20) {
+      return Response.json({ error: "Carrito inválido (1-20 items)" }, { status: 400 });
+    }
+    for (const it of items) {
+      if (!it.productId || typeof it.productId !== "string" || it.productId.length > 64) {
+        return Response.json({ error: "productId inválido" }, { status: 400 });
+      }
+      if (!Number.isInteger(it.quantity) || it.quantity < 1 || it.quantity > 10) {
+        return Response.json({ error: "Cantidad inválida (1-10)" }, { status: 400 });
+      }
+      // No confiar en price del cliente — se recalcula en servidor
+    }
+    if (!paymentMethod?.type || !allowedMethods.includes(paymentMethod.type as typeof allowedMethods[number])) {
+      return Response.json({ error: "Método de pago no soportado" }, { status: 400 });
+    }
+    if (!customerInfo?.email || !customerInfo?.full_name) {
       return Response.json(
         { error: "Faltan campos requeridos: customerId, items, paymentMethod, customerInfo" },
         { status: 400 }
@@ -62,7 +82,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Monto SIEMPRE calculado en el servidor
+    // Monto SIEMPRE calculado en el servidor — rechazar producto inexistente (anti-enumeración y anti-price-tampering)
     let totalCents = 0;
     const serverItems: { productId: string; quantity: number; price: number }[] = [];
 
@@ -71,24 +91,27 @@ export async function POST(req: Request) {
         where: { id: item.productId },
       });
 
-      let priceToUse = item.price;
-
-      if (producto) {
-        priceToUse = producto.price;
-      } else {
-        console.warn(
-          `Producto no encontrado en BD por ID "${item.productId}", usando precio del carrito`
+      if (!producto) {
+        // No exponer ID al cliente — mensaje genérico (evita enumeración)
+        console.warn(`[SECURITY] Producto inexistente solicitado: ${item.productId} por customer ${customerId}`);
+        return Response.json(
+          { error: "Uno o más productos no están disponibles. Por favor recarga el catálogo." },
+          { status: 400 }
         );
       }
 
-      const itemTotalCents = priceToUse * 100 * item.quantity;
+      const priceToUse = producto.price; // SIEMPRE precio servidor
+      const itemTotalCents = Math.round(priceToUse * 100 * item.quantity);
       totalCents += itemTotalCents;
-      // Usar precio del servidor si producto existe, sino del carrito
       serverItems.push({
-        productId: producto?.id ?? item.productId,
+        productId: producto.id,
         quantity: item.quantity,
         price: priceToUse,
       });
+    }
+
+    if (totalCents <= 0 || totalCents > 50_000_000) { // max 500k COP en centavos = 500k
+      return Response.json({ error: "Monto inválido" }, { status: 400 });
     }
 
     // Referencia única para Wompi (max 255 chars)
@@ -208,17 +231,15 @@ export async function POST(req: Request) {
       status: txResult.data.status,
     });
   } catch (error) {
+    // No loguear PII (email, phone) en plaintext — solo IDs hasheados
     console.error(
       "create-transaction error:",
-      error,
-      "\ncustomerId:",
-      customerId,
-      "\npaymentMethod.type:",
-      paymentMethod?.type,
-      "\nitem product IDs:",
-      items.map((i) => i.productId)
+      error instanceof Error ? error.message : String(error),
+      `customerId=${String(customerId).slice(0,8)}...`,
+      `method=${paymentMethod?.type}`
     );
     const message = getWompiErrorMessage(error, paymentMethod?.type ?? undefined);
+    // Mensaje sanitizado — nunca filtrar stack ni detalles de Wompi privados
     return Response.json({ error: message }, { status: 500 });
   }
 }

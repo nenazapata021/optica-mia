@@ -1,23 +1,44 @@
-export const metadata = {
-  title: "Ubicación | Óptica Mía",
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Nuestras Tiendas | Óptica Mía 452 Cra 49 Itagüí",
   description:
-    "Encuéntranos en Itagui, Antioquia. Visítanos y elige tus gafas favoritas.",
+    "Visítanos en Cra. 49 #45-12, Santa María, Itagüí (Antioquia). A 15 min de Medellín. Examen visual, probador IA, paga con Nequi/Addi/Sistecredito. Tel: +57 301 739 1219.",
+  alternates: { canonical: "/ubicacion" },
+  openGraph: { title: "Óptica Mía - Tienda Itagüí 452 Cra 49", description: "Cómo llegar desde Medellín. Mapa, horario y contacto.", url: "/ubicacion", type: "website" },
 };
 
 const STORE_NAME = "Óptica Mía";
-const STORE_ADDRESS = "Itagui, Antioquia, Colombia";
+const STORE_ADDRESS = "Cra. 49 #45-12, Santa María, Itagüí, Antioquia 055412";
 const STORE_COORDS = { lat: 6.169499839592879, lng: -75.61269963490861 };
 const GOOGLE_MAPS_URL = `https://www.google.com/maps?q=${STORE_COORDS.lat},${STORE_COORDS.lng}&z=16&hl=es`;
 
 export default function UbicacionPage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Optician",
+    name: STORE_NAME,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "Cra. 49 #45-12",
+      addressLocality: "Itagüí",
+      addressRegion: "Antioquia",
+      postalCode: "055412",
+      addressCountry: "CO",
+    },
+    geo: { "@type": "GeoCoordinates", latitude: STORE_COORDS.lat, longitude: STORE_COORDS.lng },
+    telephone: "+573017391219",
+    openingHours: "Mo-Sa 09:00-18:00",
+    areaServed: [{ "@type": "City", name: "Itagüí" }, { "@type": "City", name: "Medellín" }],
+  };
   return (
     <main className="mx-auto max-w-5xl px-4 py-12">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <h1 className="mb-2 text-center text-3xl font-bold text-[#005f6b]">
         {STORE_NAME}
       </h1>
-      <p className="mb-8 text-center text-gray-500">
-        {STORE_ADDRESS}
-      </p>
+      <p className="mb-1 text-center text-sm font-medium text-gray-700">{STORE_ADDRESS}</p>
+      <p className="mb-8 text-center text-sm text-gray-500">A 15 min de Medellín • Envío gratis Valle de Aburrá • Examen visual en sede</p>
 
       <div className="mb-10 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
         <iframe

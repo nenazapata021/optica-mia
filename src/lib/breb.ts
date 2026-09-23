@@ -1,10 +1,13 @@
 // Llave Bre-B configurable — valor viene de env, no hardcodeado en TSX
-// Cambiar solo en .env / .env.example y reconstruir (NEXT_PUBLIC_ se inyecta en build)
-export const BREB_KEY = process.env.NEXT_PUBLIC_BREB_KEY ?? "";
+// Cambiar solo en .env / .env.example y reconstruir (NEXT_PUBLIC_ se inyecta en build time)
+// Preferencia: env > fallback @MGA313 > vacío
+const RAW_BREB_KEY = (process.env.NEXT_PUBLIC_BREB_KEY ?? "").trim();
 
-export const isBrebConfigured = BREB_KEY.length > 0;
+export const BREB_KEY = RAW_BREB_KEY || "@MGA313";
 
-// Helper para mostrar en UI con fallback
+export const isBrebConfigured = BREB_KEY.length > 0 && BREB_KEY !== "No configurada";
+
+// Helper para mostrar en UI con fallback — nunca retorna vacío
 export function getBrebDisplayValue(): string {
-  return BREB_KEY || "@MGA313" || "No configurada";
+  return BREB_KEY || "@MGA313";
 }

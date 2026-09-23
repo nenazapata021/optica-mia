@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/app/context/CartContextType";
 
-type PaymentMethod = "wompi" | "addi" | "sistecredito";
+type PaymentMethod = "wompi" | "addi" | "sistecredito" | "breb";
 
 interface PaymentMethodOption {
   value: PaymentMethod;
@@ -14,6 +14,12 @@ interface PaymentMethodOption {
 }
 
 const PAYMENT_METHODS: PaymentMethodOption[] = [
+  {
+    value: "breb",
+    label: "Bre-B",
+    description: "Transferencia inmediata con llave @MGA313",
+    icon: "/icons/breb.svg",
+  },
   {
     value: "wompi",
     label: "Wompi (Tarjeta/PSE/Nequi)",

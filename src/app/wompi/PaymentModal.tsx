@@ -9,7 +9,7 @@ import WhatsAppCheckoutButton from "../whatsapp/WhatsAppCheckoutButton";
 import type { WhatsAppOrderData } from "../whatsapp/WhatsAppCheckoutButton";
 import BreBPayment from "../../components/checkout/BreBPayment";
 
-type PaymentMethodType = "NEQUI" | "ADDI" | "SISTECREDITO";
+type PaymentMethodType = "BREB" | "ADDI" | "SISTECREDITO";
 
 interface PaymentModalProps {
   customerId: string;
@@ -31,10 +31,10 @@ const PAYMENT_METHODS: {
   icon: string;
 }[] = [
   {
-    type: "NEQUI",
-    label: "Nequi",
-    description: "Paga con Nequi, escanea el código QR",
-    icon: "/icons/nequi.svg",
+    type: "BREB",
+    label: "Bre-B",
+    description: "Transferencia inmediata con tu llave Bre-B",
+    icon: "/icons/breb.svg",
   },
   {
     type: "ADDI",
@@ -70,8 +70,8 @@ export default function PaymentModal({
     setSelectedMethod(method);
     setErrorMsg("");
 
-    // NEQUI: mostrar BreB directamente sin llamar a la API
-    if (method === "NEQUI") {
+    // BRE-B: mostrar llave directamente sin llamar a la API (pago inmediato manual)
+    if (method === "BREB") {
       setStep("breb");
       return;
     }
@@ -187,40 +187,47 @@ export default function PaymentModal({
         {/* Selección de método */}
         {step === "select" && (
           <>
-            <h2 className="mb-2 text-2xl font-bold text-gray-800">
-              Método de pago
+            <div className="flex items-center gap-2 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-3 py-1 w-fit mb-3">🔒 Pago 100% seguro con Wompi</div>
+            <h2 className="mb-1 text-2xl font-bold text-gray-800">
+              Elige cómo pagar
             </h2>
-            <p className="mb-6 text-sm text-gray-500">
-              Selecciona cómo deseas pagar tu pedido.
+            <p className="mb-5 text-sm text-gray-500">
+              Todos con IVA incluido. Después te confirmamos por WhatsApp.
             </p>
             <div className="flex flex-col gap-3">
               {PAYMENT_METHODS.map((method) => (
                 <button
                   key={method.type}
                   onClick={() => handleSelectMethod(method.type)}
-                  className="flex items-center gap-4 rounded-xl border border-gray-200 p-4 text-left transition hover:border-[#D4AF37] hover:shadow-md"
+                  className="flex items-center gap-4 rounded-xl border-2 border-gray-200 p-4 text-left transition hover:border-[#008294] hover:bg-[#e0f2f4]/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#008294] min-h-[72px]"
                 >
-                  <div className="flex h-12 w-24 shrink-0 items-center justify-center rounded-lg bg-gray-50 p-1.5">
+                  <div className="flex h-12 w-20 shrink-0 items-center justify-center rounded-lg bg-white border p-1.5">
                     <Image
                       src={method.icon}
                       alt={method.label}
-                      width={96}
-                      height={40}
+                      width={80}
+                      height={32}
                       className="h-full w-auto object-contain"
                       unoptimized
                     />
                   </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-800">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-800 flex items-center gap-2">
                       {method.label}
+                      {method.type==="BREB" && <span className="text-[11px] font-semibold bg-[#e0f2f4] text-[#005f6b] px-2 py-0.5 rounded-full">Recomendado</span>}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 leading-tight">
                       {method.description}
                     </p>
+                    <p className="text-xs text-gray-400">
+                      {method.type==="BREB" ? "Llave • Inmediato" : method.type==="ADDI" ? "Cuotas • Te llevamos a WhatsApp" : "Crédito • Te llevamos a WhatsApp"}
+                    </p>
                   </div>
+                  <span className="text-gray-300" aria-hidden>›</span>
                 </button>
               ))}
             </div>
+            <p className="text-xs text-center text-gray-400 mt-3">Solo enviamos a Medellín e Itagüí • ¿Fuera de zona? Escríbenos antes de pagar</p>
           </>
         )}
 
@@ -232,7 +239,7 @@ export default function PaymentModal({
               Procesando pago...
             </h3>
             <p className="mt-2 text-sm text-gray-500">
-              Estamos generando tu transacción con {selectedMethod === "NEQUI" ? "Nequi" : selectedMethod === "ADDI" ? "Addi" : "Sistecredito"}.
+              Estamos generando tu transacción con {selectedMethod === "BREB" ? "Bre-B" : selectedMethod === "ADDI" ? "Addi" : "Sistecredito"}.
             </p>
           </div>
         )}
@@ -272,7 +279,7 @@ export default function PaymentModal({
           />
         )}
 
-        {/* Nequi: BreB payment */}
+        {/* Bre-B: pago inmediato con llave */}
         {step === "breb" && (
           <div>
             <BreBPayment amount={cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)} />
@@ -307,26 +314,33 @@ export default function PaymentModal({
 
         {/* Error */}
         {step === "error" && (
-          <div className="flex flex-col items-center py-8 text-center">
-            <AlertCircle size={56} className="text-red-500" />
-            <h3 className="mt-4 text-xl font-bold text-gray-800">
-              Error en el pago
+          <div className="flex flex-col items-center py-6 text-center">
+            <AlertCircle size={48} className="text-red-500" />
+            <h3 className="mt-3 text-xl font-bold text-gray-800">
+              No pudimos procesar tu pago
             </h3>
-            <p className="mt-2 text-sm text-red-500">
+            <p className="mt-2 text-sm text-gray-600 max-w-sm">
               {errorMsg 
                 ? errorMsg.includes("Nequi") 
-                  ? "Verifica tu número de teléfono y vuelve a intentarlo." 
+                  ? "Verifica tu número de teléfono (10 dígitos, ej. 3001234567) y vuelve a intentar." 
                   : errorMsg.includes("rechazado") 
-                    ? `Tu pago con ${selectedMethod === "ADDI" ? "Addi" : "Sistecredito"} fue rechazado. Intenta con otro método.` 
-                    : errorMsg 
-                    : "Error al procesar el pago"}
+                    ? `Tu pago con ${selectedMethod === "ADDI" ? "Addi" : "Sistecredito"} fue rechazado. Prueba con Bre-B o escribe a WhatsApp y te ayudamos a financiar.` 
+                    : errorMsg.includes("Producto no existe")
+                      ? "Una montura de tu carrito ya no está disponible. Vuelve al catálogo y agrégala de nuevo."
+                      : errorMsg 
+                    : "Hubo un error temporal. Intenta de nuevo o paga por Bre-B."}
             </p>
-            <button
-              onClick={() => setStep("select")}
-              className="mt-6 rounded-lg bg-[#D4AF37] px-6 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-[#C39C4E]"
-            >
-              Intentar de nuevo
-            </button>
+            <div className="mt-4 flex flex-col gap-2 w-full">
+              <button
+                onClick={() => setStep("select")}
+                className="rounded-xl bg-[#008294] px-6 py-3 text-sm font-bold text-white hover:bg-[#005f6b] min-h-[44px]"
+              >
+                Probar otro método
+              </button>
+              <a href="https://wa.me/573017391219" target="_blank" rel="noopener noreferrer" className="rounded-xl border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 text-center min-h-[44px] flex items-center justify-center">
+                Hablar por WhatsApp
+              </a>
+            </div>
           </div>
         )}
       </div>

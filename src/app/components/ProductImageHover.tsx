@@ -8,6 +8,8 @@ interface ProductImageHoverProps {
   imageSide?: string | StaticImageData;
   alt: string;
   className?: string;
+  priority?: boolean;
+  href?: string;
 }
 
 function toSrc(url: string | StaticImageData): string {
@@ -19,6 +21,8 @@ export default function ProductImageHover({
   imageSide,
   alt,
   className,
+  priority = false,
+  href,
 }: ProductImageHoverProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -37,38 +41,17 @@ export default function ProductImageHover({
   const sideSrc = imageSide ? toSrc(imageSide) : null;
   const hasSideImage = Boolean(sideSrc && sideSrc !== frontSrc);
 
-  useEffect(() => {
-    if (!hasSideImage || !sideSrc) return;
-    const link = document.createElement("link");
-    link.rel = "preload";
-    link.as = "image";
-    link.href = sideSrc;
-    document.head.appendChild(link);
-    return () => {
-      document.head.removeChild(link);
-    };
-  }, [sideSrc, hasSideImage]);
-
   const showSide = !isMobile && hasSideImage && isHovered;
-
-  return (
-    <div
-      className={`relative overflow-hidden rounded-xl bg-[#f5f5f5] ${className ?? "w-full aspect-[4/3]"}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      role="img"
-      aria-label={alt}
-    >
+  const inner = (
+    <>
       <Image
         src={frontSrc}
-        alt={`${alt} - Vista frontal`}
+        alt={alt}
         fill
-        priority
+        priority={priority}
+        loading={priority ? undefined : "lazy"}
         sizes="(max-width: 768px) 100vw, 33vw"
-        className={`
-          object-contain p-4 transition-opacity duration-300 ease-in-out
-          ${showSide ? "opacity-0" : "opacity-100"}
-        `}
+        className={`object-contain p-4 transition-opacity duration-300 ease-in-out ${showSide ? "opacity-0" : "opacity-100"}`}
       />
       {hasSideImage && sideSrc && (
         <Image
@@ -77,11 +60,25 @@ export default function ProductImageHover({
           fill
           loading="lazy"
           sizes="(max-width: 768px) 100vw, 33vw"
-          className={`
-            object-contain p-4 transition-opacity duration-300 ease-in-out
-            ${showSide ? "opacity-100" : "opacity-0"}
-          `}
+          className={`object-contain p-4 transition-opacity duration-300 ease-in-out ${showSide ? "opacity-100" : "opacity-0"}`}
         />
+      )}
+    </>
+  );
+  return (
+    <div
+      className={`relative overflow-hidden rounded-xl bg-[#f5f5f5] ${className ?? "w-full aspect-[4/3]"}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      role={href ? undefined : "img"}
+      aria-label={href ? undefined : alt}
+    >
+      {href ? (
+        <a href={href} aria-label={alt} className="absolute inset-0">
+          {inner}
+        </a>
+      ) : (
+        inner
       )}
     </div>
   );

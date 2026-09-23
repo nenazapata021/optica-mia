@@ -84,10 +84,12 @@ export default function RegistroModal({ producto, onClose, onSuccess }: Registro
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#008294]" />
           <span className="text-xs font-semibold uppercase tracking-wide text-[#005f6b]">Óptica Mía</span>
         </div>
+        <div className="inline-flex items-center gap-2 rounded-full bg-[#e0f2f4] px-3 py-1 text-xs font-semibold text-[#005f6b] mb-2">🔒 Solo Medellín e Itagüí • 1 sola vez</div>
         <h2 id="registro-title" className="text-2xl font-bold text-slate-800">Bienvenido a Óptica Mía</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Regístrate para continuar con <span className="font-medium text-slate-700">{producto.name}</span> y guardar tu información.
+          Guarda tus datos para <span className="font-medium text-slate-700">{producto.name}</span>. <span className="font-semibold text-[#008294]">No te lo pediremos de nuevo</span> y podrás comprar en 1 clic la próxima vez.
         </p>
+        <p className="mt-2 text-xs text-slate-400">Tardas 20 segundos • Datos protegidos • Sin spam</p>
 
         {success ? (
           <div className="mt-8 flex flex-col items-center justify-center gap-3 py-8 text-center">
@@ -133,10 +135,12 @@ export default function RegistroModal({ producto, onClose, onSuccess }: Registro
             )}
 
             <button type="submit" disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#008294] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#005f6b] disabled:opacity-60">
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#008294] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#005f6b] disabled:opacity-60 min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#008294]">
               {loading && <LoaderCircle size={16} className="animate-spin" />}
-              {loading ? "Guardando…" : "Continuar"}
+              {loading ? "Guardando…" : "Continuar → Elegir mis lentes"}
             </button>
+            <p className="text-xs text-center text-slate-400">Al continuar aceptas tratamiento de datos para envíos en Medellín/Itagüí</p>
+            <button type="button" onClick={onClose} className="w-full text-sm text-slate-500 underline hover:text-slate-700 min-h-[44px]">Ahora no, solo explorar</button>
           </form>
         )}
       </div>

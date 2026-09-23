@@ -1,7 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isAdminRequest } from "@/lib/adminAuth";
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // RBAC: solo admin — evita que cliente liste todas las órdenes (PII)
+  if (!isAdminRequest(req)) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+  // Rate limit dashboard polling (cada 10s): 30 req/min
+  const ip = getClientIp(req);
+  const rl = rateLimit(`orders:get:${ip}`, { windowMs: 60_000, max: 30 });
+  if (!rl.allowed) return NextResponse.json({ error: "Rate limit" }, { status: 429 });
+
   try {
     const orders = await prisma.order.findMany({
       include: {
@@ -57,8 +68,10 @@ export async function POST(request: Request) {
     const existingIds = new Set(existingProducts.map((p) => p.id));
     const missingIds = [...new Set(productIds)].filter((id) => !existingIds.has(id));
     if (missingIds.length > 0) {
+      // No filtrar IDs al cliente — genérico para evitar enumeración
+      console.warn(`[SECURITY] Orden con productos inexistentes: ${missingIds.join(",")}`);
       return NextResponse.json(
-        { error: `Productos inexistentes en el catálogo: ${missingIds.join(", ")}`, missingIds },
+        { error: "Uno o más productos no están disponibles. Recarga el catálogo." },
         { status: 400 }
       );
     }

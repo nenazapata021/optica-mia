@@ -201,14 +201,28 @@ export default function CarritoPage() {
   };
 
   return (
-    <main className="w-full min-h-screen bg-[#f8fafc] py-12 px-4">
+    <main className="w-full min-h-screen bg-[#f8fafc] py-8 px-4">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-2 text-gray-800">
-          Tu Carrito de Compras
-        </h1>
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+          <span className="text-amber-600 mt-0.5">📦</span>
+          <div className="text-sm">
+            <p className="font-semibold text-amber-800">Solo Medellín e Itagüí</p>
+            <p className="text-amber-700/80">Envío gratis 24-48h en Valle de Aburrá. Si estás fuera, coordinamos por <a href="https://wa.me/573017391219" target="_blank" rel="noopener noreferrer" className="underline font-semibold">WhatsApp</a> antes de pagar.</p>
+          </div>
+        </div>
 
-        <p className="text-center text-gray-500 mb-12">
-          Revisa tus productos y procede al pago.
+        <div className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
+          <span className="flex items-center gap-1 text-[#008294]"><span className="h-6 w-6 rounded-full bg-[#008294] text-white flex items-center justify-center text-xs">1</span> Carrito</span>
+          <span className="h-px w-8 bg-gray-300" />
+          <span className="flex items-center gap-1"><span className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">2</span> Pago Wompi</span>
+          <span className="h-px w-8 bg-gray-300" />
+          <span className="flex items-center gap-1"><span className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">3</span> WhatsApp</span>
+        </div>
+        <h1 className="text-3xl md:text-4xl font-bold text-center mb-2 text-gray-800">
+          Tu Carrito
+        </h1>
+        <p className="text-center text-gray-500 mb-6">
+          Revisa tus productos — precios con IVA incluido
         </p>
 
         {!isClient || cartItems.length === 0 ? (
@@ -362,41 +376,47 @@ export default function CarritoPage() {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-xl border h-fit">
-              <h2 className="text-2xl font-bold mb-6 text-gray-800">
-                Resumen
+            <div className="bg-white p-6 rounded-xl border h-fit sticky top-[88px]">
+              <h2 className="text-xl font-bold mb-4 text-gray-800">
+                Resumen — con IVA
               </h2>
 
-              <div className="flex justify-between mb-2">
-                <span>Subtotal</span>
-                <span className="text-[#008294]">
+              <div className="flex justify-between mb-2 text-sm">
+                <span className="text-gray-600">Subtotal ({cartItems.length} {cartItems.length===1?"producto":"productos"})</span>
+                <span className="font-semibold text-gray-800">
                   ${typeof totalPrice === "number" ? totalPrice.toLocaleString("es-CO") : "0"}
                 </span>
               </div>
 
-              <div className="flex justify-between mb-6">
-                <span>Env\u00edo</span>
-                <span className="text-green-600">Gratis</span>
+              <div className="flex justify-between mb-2 text-sm">
+                <span className="text-gray-600">Envío Valle Aburrá</span>
+                <span className="font-semibold text-green-600">Gratis</span>
               </div>
+              <p className="text-xs text-gray-400 mb-4">Solo Medellín e Itagüí • Si estás fuera, te contactamos por WhatsApp</p>
 
-              <div className="border-t pt-4 flex justify-between">
-                <span className="text-lg font-bold">Total</span>
-
-                <span className="text-2xl font-bold text-[#008294]">
-                  $
-                  {typeof totalPrice === "number"
-                    ? totalPrice.toLocaleString("es-CO")
-                    : "0"}
+              <div className="border-t pt-4 flex justify-between items-center">
+                <span className="text-base font-bold">Total a pagar</span>
+                <span className="text-2xl font-extrabold text-[#008294]">
+                  ${typeof totalPrice === "number" ? totalPrice.toLocaleString("es-CO") : "0"}
                 </span>
               </div>
+              <p className="text-xs text-gray-400 mt-1">Financia con <span className="font-semibold">Addi</span> o <span className="font-semibold">Sistecredito</span> en el siguiente paso</p>
 
               <button
                 onClick={handlePago}
-                className="w-full mt-6 bg-[#C39C4E] text-slate-900 font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:opacity-90"
+                className="w-full mt-5 bg-[#008294] text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#005f6b] shadow-md hover:shadow-lg transition-all min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#008294] focus-visible:ring-offset-2"
               >
-                Proceder al pago
+                Pagar con Wompi
                 <ArrowRight size={20} />
               </button>
+              <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-500">
+                <span className="h-2 w-3 bg-[#e8d5a3] rounded-sm border" aria-hidden /> <span className="h-2 w-3 bg-[#008294] rounded-sm" aria-hidden /> Pago seguro Wompi • SSL
+              </div>
+              <p className="text-xs text-center text-gray-400 mt-2">Te llevaremos a WhatsApp si eliges Addi/Sistecredito</p>
+              <div className="mt-4 rounded-lg bg-gray-50 border p-3 text-xs text-gray-600">
+                <p className="font-semibold">¿Dudas?</p>
+                <a href="https://wa.me/573017391219" target="_blank" rel="noopener noreferrer" className="text-[#008294] underline font-medium">Chatea por WhatsApp — respuesta en minutos</a>
+              </div>
             </div>
           </div>
         )}
