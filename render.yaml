@@ -59,10 +59,10 @@ services:
       - key: NEXT_PUBLIC_SISTECREDITO_CLIENT_ID
         sync: false
 
-  - type: pserv
-    name: optica-mia-db
+databases:
+  - name: optica-mia-db
     plan: starter
     region: oregon
-    postgresMajorVersion: 16
-    databaseName: optica_mia
-    user: optica
+    majorVersion: "16"
+    database: optica_mia
+    username: optica
