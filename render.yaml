@@ -1,0 +1,68 @@
+services:
+  - type: web
+    name: optica-mia-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: RUN_SEED
+        value: "true"
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: optica-mia-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: optica-mia-db
+          property: port
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: optica-mia-db
+          property: user
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: optica-mia-db
+          property: database
+      - key: DATABASE_URL
+        fromDatabase:
+          name: optica-mia-db
+          property: connectionString
+      # Secrets (configure in Render dashboard after first deploy)
+      - key: WOMPI_PRIVATE_KEY
+        sync: false
+      - key: WOMPI_PUBLIC_KEY
+        sync: false
+      - key: WOMPI_INTEGRITY_SECRET
+        sync: false
+      - key: ADDI_CLIENT_ID
+        sync: false
+      - key: ADDI_CLIENT_SECRET
+        sync: false
+      - key: SISTECREDITO_CLIENT_ID
+        sync: false
+      - key: SISTECREDITO_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_WOMPI_PUBLIC_KEY
+        sync: false
+      - key: NEXT_PUBLIC_ADDI_CLIENT_ID
+        sync: false
+      - key: NEXT_PUBLIC_SISTECREDITO_CLIENT_ID
+        sync: false
+
+  - type: pserv
+    name: optica-mia-db
+    plan: starter
+    region: oregon
+    postgresMajorVersion: 16
+    databaseName: optica_mia
+    user: optica
