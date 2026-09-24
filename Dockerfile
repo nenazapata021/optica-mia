@@ -19,6 +19,18 @@ ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholde
 RUN npx prisma generate
 RUN npm run build
 
+FROM deps AS dev
+RUN apt-get update -y && apt-get install -y --no-install-recommends postgresql-client \
+  && rm -rf /var/lib/apt/lists/*
+COPY . .
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENV APP_MODE=dev
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+EXPOSE 3000
+ENTRYPOINT ["/entrypoint.sh"]
+
 FROM base AS runner
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
@@ -48,17 +60,5 @@ RUN chmod +x /entrypoint.sh \
   && chown -R nextjs:nodejs /app
 
 USER nextjs
-EXPOSE 3000
-ENTRYPOINT ["/entrypoint.sh"]
-
-FROM deps AS dev
-RUN apt-get update -y && apt-get install -y --no-install-recommends postgresql-client \
-  && rm -rf /var/lib/apt/lists/*
-COPY . .
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-ENV APP_MODE=dev
-ENV HOSTNAME=0.0.0.0
-ENV PORT=3000
 EXPOSE 3000
 ENTRYPOINT ["/entrypoint.sh"]
