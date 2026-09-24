@@ -4,9 +4,9 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    plan: starter
+    plan: 1c-2g
     region: oregon
-    autoDeploy: true
+    autoDeployTrigger: commit
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -35,7 +35,6 @@ services:
         fromDatabase:
           name: optica-mia-db
           property: connectionString
-      # Secrets (configure in Render dashboard after first deploy)
       - key: WOMPI_PRIVATE_KEY
         sync: false
       - key: WOMPI_PUBLIC_KEY
@@ -61,8 +60,8 @@ services:
 
 databases:
   - name: optica-mia-db
-    plan: starter
+    plan: 0.5c-1g
     region: oregon
-    majorVersion: "16"
-    database: optica_mia
-    username: optica
+    postgresMajorVersion: "16"
+    databaseName: optica_mia
+    user: optica
