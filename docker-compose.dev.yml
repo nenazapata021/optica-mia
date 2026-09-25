@@ -2,6 +2,11 @@ services:
   app:
     build:
       target: dev
+      args:
+        AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+        AUTH_SECRET: ${AUTH_SECRET}
+        NEXTAUTH_URL: ${AUTH_URL:-http://localhost:3000}
+        NEXTAUTH_SECRET: ${AUTH_SECRET}
 environment:
     NODE_ENV: development
     RUN_SEED: ${RUN_SEED:-false}
@@ -11,6 +16,8 @@ environment:
     NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
     AUTH_URL: ${AUTH_URL:-http://localhost:3000}
     AUTH_SECRET: ${AUTH_SECRET}
+    NEXTAUTH_URL: ${AUTH_URL:-http://localhost:3000}
+    NEXTAUTH_SECRET: ${AUTH_SECRET}
     volumes:
       - .:/app
       - /app/node_modules
