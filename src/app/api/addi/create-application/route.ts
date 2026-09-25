@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import crypto from "crypto";
 
 const addiBaseUrl = process.env.ADDI_API_BASE_URL ?? "https://api.addi.mx";
 const addiClientId = process.env.ADDI_CLIENT_ID ?? "";
@@ -42,9 +43,13 @@ export async function POST(request: Request) {
     // Referencia única
     const reference = `ADDI-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
 
+    // Buscar usuario por email
+    const user = await prisma.user.findUnique({
+      where: { email: customer.email }
+    });
+
     // Modo sandbox: redirect directamente a WhatsApp (flujo manual)
-    // En producción se llamaría a la API real de Addi, pero por ahora usamos WhatsApp
-    const whatsappPhone = "573017391219"; // WhatsApp business number
+    const whatsappPhone = "573017391219";
     const whatsappMessage = `
 Hola, quiero comprar con Addi.
 Cliente: ${customerInfo.full_name || customer.full_name}
@@ -58,7 +63,7 @@ Total: $${totalCents.toLocaleString("es-CO")}
     // Crear la orden en la BD con paymentProvider = "ADDI"
     const orden = await prisma.order.create({
       data: {
-        customerId: customer.email,
+        userId: user?.id || customer.email,
         customerName: customer.full_name,
         customerEmail: customer.email,
         customerPhone: customer.phone_number ?? "",

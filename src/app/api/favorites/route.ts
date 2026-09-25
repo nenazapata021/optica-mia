@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const customerId = searchParams.get("customerId");
-    if (!customerId) {
-      return NextResponse.json({ error: "customerId requerido" }, { status: 400 });
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
+
+    const userId = (session.user as any).id;
     const favorites = await prisma.favorite.findMany({
-      where: { customerId },
+      where: { userId },
       include: { product: true },
       orderBy: { createdAt: "desc" },
     });
@@ -31,18 +33,27 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { customerId, productId } = await request.json();
-    if (!customerId || !productId) {
-      return NextResponse.json({ error: "customerId y productId requeridos" }, { status: 400 });
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
+
+    const userId = (session.user as any).id;
+    const { productId } = await request.json();
+    if (!productId) {
+      return NextResponse.json({ error: "productId requerido" }, { status: 400 });
+    }
+
     const existing = await prisma.favorite.findUnique({
-      where: { customerId_productId: { customerId, productId } },
+      where: { userId_productId: { userId, productId } },
     });
+
     if (existing) {
       await prisma.favorite.delete({ where: { id: existing.id } });
       return NextResponse.json({ favorited: false });
     }
-    await prisma.favorite.create({ data: { customerId, productId } });
+
+    await prisma.favorite.create({ data: { userId, productId } });
     return NextResponse.json({ favorited: true }, { status: 201 });
   } catch (error) {
     console.error("Favorites POST error:", error);

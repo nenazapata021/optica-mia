@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import {
   createTransaction,
   getMerchantInfo,
@@ -25,8 +26,14 @@ function normalizarTelefonoColombiano(phone: string): { normalized: string; vali
 type PaymentMethodType = "NEQUI" | "ADDI" | "SISTECREDITO";
 
 export async function POST(req: Request) {
-  const { customerId, items, paymentMethod, customerInfo } = (await req.json()) as {
-    customerId: string;
+  const session = await auth();
+  if (!session?.user) {
+    return Response.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const userId = (session.user as any).id;
+
+  const { items, paymentMethod, customerInfo } = (await req.json()) as {
     items: { productId: string; quantity: number; price: number }[];
     paymentMethod: { type: PaymentMethodType };
     customerInfo: {
@@ -36,14 +43,11 @@ export async function POST(req: Request) {
       legal_id?: string;
       legal_id_type?: string;
     };
-  }
+  };
 
   try {
     // Validación estricta de tipos permitidos
     const allowedMethods = ["NEQUI", "ADDI", "SISTECREDITO"] as const;
-    if (!customerId || typeof customerId !== "string" || customerId.length > 50) {
-      return Response.json({ error: "customerId inválido" }, { status: 400 });
-    }
     if (!items?.length || !Array.isArray(items) || items.length > 20) {
       return Response.json({ error: "Carrito inválido (1-20 items)" }, { status: 400 });
     }
@@ -54,14 +58,13 @@ export async function POST(req: Request) {
       if (!Number.isInteger(it.quantity) || it.quantity < 1 || it.quantity > 10) {
         return Response.json({ error: "Cantidad inválida (1-10)" }, { status: 400 });
       }
-      // No confiar en price del cliente — se recalcula en servidor
     }
     if (!paymentMethod?.type || !allowedMethods.includes(paymentMethod.type as typeof allowedMethods[number])) {
       return Response.json({ error: "Método de pago no soportado" }, { status: 400 });
     }
     if (!customerInfo?.email || !customerInfo?.full_name) {
       return Response.json(
-        { error: "Faltan campos requeridos: customerId, items, paymentMethod, customerInfo" },
+        { error: "Faltan campos requeridos: items, paymentMethod, customerInfo" },
         { status: 400 }
       );
     }
@@ -92,8 +95,7 @@ export async function POST(req: Request) {
       });
 
       if (!producto) {
-        // No exponer ID al cliente — mensaje genérico (evita enumeración)
-        console.warn(`[SECURITY] Producto inexistente solicitado: ${item.productId} por customer ${customerId}`);
+        console.warn(`[SECURITY] Producto inexistente solicitado: ${item.productId} por user ${userId}`);
         return Response.json(
           { error: "Uno o más productos no están disponibles. Por favor recarga el catálogo." },
           { status: 400 }
@@ -120,7 +122,7 @@ export async function POST(req: Request) {
     // Crear la orden en la BD
     const orden = await prisma.order.create({
       data: {
-        customerId,
+        userId,
         customerName: customerInfo.full_name,
         customerEmail: customerInfo.email,
         customerPhone: customerInfo.phone_number ?? "",
@@ -140,23 +142,14 @@ export async function POST(req: Request) {
     });
 
     // Validar ciudad solo para Addi/Sistecrédito (solo Medellín/Itagüí)
-    // Nota: cityValidated no está siendo establecido en el flujo actual;
-    // se permite el paso para que el flujo funcione, pero en producción
-    // debería validarse que el cliente esté en Medellín/Itagüí antes
     if (paymentMethod.type === "ADDI" || paymentMethod.type === "SISTECREDITO") {
-      // City validation check - if not validated, allow flow but indicate requirement
-      // En producción, aquí se verificaría que order.cityValidated === true
-      // o que la ciudad del cliente sea Medellín/Itagüí
       if (orden.cityValidated) {
-        // Validado - continuar normalmente
       } else {
-        // No validado - permitir paso pero el cliente debe confirmar por WhatsApp
-        // que está en la zona de entrega
       }
       return Response.json({
         transactionId: null,
         nequiQrUrl: null,
-        orderId:orden.id,
+        orderId: orden.id,
         referencia,
         amountInCents: totalCents,
         status: "PENDING",
@@ -177,7 +170,7 @@ export async function POST(req: Request) {
 
       // Guardar transactionId demo en la orden
       await prisma.order.update({
-        where: { id:orden.id },
+        where: { id: orden.id },
         data: {
           transactionId: demoResult.data.id,
           wompiStatus: "PENDING",
@@ -187,7 +180,7 @@ export async function POST(req: Request) {
       return Response.json({
         transactionId: demoResult.data.id,
         nequiQrUrl: demoResult.data.nequiQrUrl,
-        orderId:orden.id,
+        orderId: orden.id,
         referencia,
         amountInCents: totalCents,
         status: "PENDING",
@@ -215,7 +208,7 @@ export async function POST(req: Request) {
 
     // Guardar transactionId en la orden
     await prisma.order.update({
-      where: { id:orden.id },
+      where: { id: orden.id },
       data: {
         transactionId: txResult.data.id,
         wompiStatus: txResult.data.status,
@@ -225,21 +218,19 @@ export async function POST(req: Request) {
     return Response.json({
       transactionId: txResult.data.id,
       nequiQrUrl: txResult.data.nequiQrUrl,
-      orderId:orden.id,
+      orderId: orden.id,
       referencia,
       amountInCents: totalCents,
       status: txResult.data.status,
     });
   } catch (error) {
-    // No loguear PII (email, phone) en plaintext — solo IDs hasheados
     console.error(
       "create-transaction error:",
       error instanceof Error ? error.message : String(error),
-      `customerId=${String(customerId).slice(0,8)}...`,
+      `userId=${String(userId).slice(0,8)}...`,
       `method=${paymentMethod?.type}`
     );
     const message = getWompiErrorMessage(error, paymentMethod?.type ?? undefined);
-    // Mensaje sanitizado — nunca filtrar stack ni detalles de Wompi privados
     return Response.json({ error: message }, { status: 500 });
   }
 }

@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeImageBuffer } from "@/lib/normalizeImageServer";
+import { auth } from "@/lib/auth";
+import crypto from "crypto";
 
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const userId = (session.user as any).id;
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
-    const customerId = formData.get("customerId") as string | null;
-
-    if (!customerId) {
-      return NextResponse.json({ error: "customerId es requerido (email único)." }, { status: 400 });
-    }
 
     if (!file) {
       return NextResponse.json({ error: "Archivo no recibido." }, { status: 400 });
@@ -25,15 +29,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validar customer existe
-    const customer = await prisma.customer.findUnique({ where: { id: customerId } });
-    if (!customer) {
-      return NextResponse.json({ error: "Customer no encontrado. Verifica el email único." }, { status: 404 });
-    }
-
     if (file.size > 8 * 1024 * 1024) {
       return NextResponse.json({ error: "Archivo demasiado grande (máx 8MB)." }, { status: 400 });
     }
+
     // Validar magic bytes primeras muestras (no solo MIME)
     const inputBuffer = Buffer.from(await file.arrayBuffer());
     const header = inputBuffer.subarray(0, 8);
@@ -58,7 +57,6 @@ export async function POST(request: Request) {
     const url = `/api/client-photos/${storageKey}`;
 
     // Guardar en PostgreSQL con dimensiones reales del procesamiento
-    // Prisma Bytes requires Uint8Array<ArrayBuffer> — convert from sharp output
     const dataBuffer = Buffer.from(normalized.buffer);
 
     await prisma.clientPhoto.create({
@@ -70,7 +68,7 @@ export async function POST(request: Request) {
         width: normalized.width,
         height: normalized.height,
         data: dataBuffer,
-        customerId,
+        userId,
       },
     });
 
@@ -82,19 +80,20 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const customerId = searchParams.get("customerId");
-
-  if (!customerId || customerId.length > 64) {
-    return NextResponse.json({ error: "customerId requerido" }, { status: 400 });
-  }
-
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const userId = (session.user as any).id;
+
     const photos = await prisma.clientPhoto.findMany({
-      where: { customerId },
+      where: { userId },
       orderBy: { createdAt: "desc" },
       select: { storageKey: true, url: true, width: true, height: true, sizeBytes: true, createdAt: true },
     });
+
     return NextResponse.json({ photos });
   } catch (error) {
     console.error("[GET /api/client-photos] Error:", error);

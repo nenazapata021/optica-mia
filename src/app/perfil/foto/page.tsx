@@ -1,41 +1,43 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ClientPhotoUploader from "../../components/ClientPhotoUploader";
-import VirtualTryOn from "../../components/VirtualTryOn";
-
-// Demo page: no reemplaza modalProbador, es ruta nueva /perfil/foto
-// Requiere customerId (email único). Para demo, permite ingresarlo manualmente
-// o lo recupera de localStorage si existe flujo de RegistroCliente.
+import { useAuth } from "@/app/context/AuthContext";
+import ClientPhotoUploader from "@/app/components/ClientPhotoUploader";
+import VirtualTryOn from "@/app/components/VirtualTryOn";
 
 const SAMPLE_GLASSES = "/assets/gafasDeSol/gafas de sol1-sin-fondo.png";
 
 export default function PerfilFotoPage() {
-  const [customerId, setCustomerId] = useState<string>("");
-  const [inputId, setInputId] = useState<string>("");
+  const { user, isLoading } = useAuth();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [showTryOn, setShowTryOn] = useState(false);
-
-  useEffect(() => {
-    // Intenta recuperar customerId de localStorage (RegistroCliente lo guarda)
-    const stored = localStorage.getItem("optica-mia-customer-id") || localStorage.getItem("customerId") || "";
-    if (stored) {
-      setCustomerId(stored);
-      setInputId(stored);
-    }
-  }, []);
-
-  const handleSaveId = () => {
-    const trimmed = inputId.trim();
-    if (!trimmed) return;
-    setCustomerId(trimmed);
-    localStorage.setItem("optica-mia-customer-id", trimmed);
-  };
 
   const handleSuccess = (url: string) => {
     setPhotoUrl(url);
     setShowTryOn(true);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md w-full text-center">
+          <h1 className="text-2xl font-bold text-gray-900">Acceso requerido</h1>
+          <p className="mt-4 text-gray-600">Debes iniciar sesión para acceder a esta página</p>
+          <a href="/login?callback=/perfil/foto" className="mt-6 inline-block px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+            Iniciar sesión
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-10 px-4">
@@ -45,33 +47,8 @@ export default function PerfilFotoPage() {
           Tu foto se procesa en tu dispositivo a <strong>1024×1024 PNG</strong> centrada en tu rostro, lista para MediaPipe Tasks Vision.
         </p>
 
-        {/* CustomerId input (email único) */}
-        <div className="mt-6 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-          <label className="text-sm font-semibold text-slate-700">Customer ID (email único requerido)</label>
-          <div className="mt-2 flex gap-2">
-            <input
-              value={inputId}
-              onChange={(e) => setInputId(e.target.value)}
-              placeholder="pega tu customerId (cuid)"
-              className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#008294]"
-            />
-            <button
-              onClick={handleSaveId}
-              className="rounded-xl bg-[#008294] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005f6b]"
-            >
-              Guardar
-            </button>
-          </div>
-          {customerId && <p className="mt-2 text-xs text-green-600">Usando customerId: {customerId}</p>}
-          {!customerId && <p className="mt-2 text-xs text-amber-600">Ingresa un Customer válido de la tabla Customer (creado vía /api/customers).</p>}
-        </div>
-
         <div className="mt-6 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-          {customerId ? (
-            <ClientPhotoUploader customerId={customerId} onSuccess={handleSuccess} />
-          ) : (
-            <p className="text-center text-sm text-slate-400">Ingresa tu Customer ID para habilitar la subida.</p>
-          )}
+          <ClientPhotoUploader customerId={user.id} onSuccess={handleSuccess} />
         </div>
 
         {showTryOn && photoUrl && (

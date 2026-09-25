@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isAdminRequest } from "@/lib/adminAuth";
 import { rateLimit, getClientIp } from "@/lib/rateLimit";
+import { auth } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   // RBAC: solo admin — evita que cliente liste todas las órdenes (PII)
-  if (!isAdminRequest(req)) {
+  if (!await isAdminRequest(req)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   // Rate limit dashboard polling (cada 10s): 30 req/min
@@ -49,16 +50,23 @@ export async function GET(req: NextRequest) {
 
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const userId = (session.user as any).id;
+
     const {
-      customerId,
       items,
     }: {
-      customerId: string;
       items: Array<{ productId: string; quantity: number; price: number }>;
     } = await request.json();
-    if (!customerId || !items?.length) {
-      return NextResponse.json({ error: "customerId e items requeridos" }, { status: 400 });
+
+    if (!items?.length) {
+      return NextResponse.json({ error: "items requeridos" }, { status: 400 });
     }
+
     const totalInCents = Math.round(items.reduce((sum: number, item: { price: number; quantity: number }) => sum + item.price * item.quantity, 0) * 100);
     const productIds = items.map((item: { productId: string }) => item.productId);
     const existingProducts = await prisma.product.findMany({
@@ -68,22 +76,27 @@ export async function POST(request: Request) {
     const existingIds = new Set(existingProducts.map((p) => p.id));
     const missingIds = [...new Set(productIds)].filter((id) => !existingIds.has(id));
     if (missingIds.length > 0) {
-      // No filtrar IDs al cliente — genérico para evitar enumeración
       console.warn(`[SECURITY] Orden con productos inexistentes: ${missingIds.join(",")}`);
       return NextResponse.json(
         { error: "Uno o más productos no están disponibles. Recarga el catálogo." },
         { status: 400 }
       );
     }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { nombre: true, email: true, telefono: true, direccion: true }
+    });
+
     const order = await prisma.order.create({
       data: {
-        customerId,
+        userId,
         totalInCents,
-        paymentProvider: "WOMPI", // valor por defecto
-        customerName: "",
-        customerEmail: "",
-        customerPhone: "",
-        customerCity: "",
+        paymentProvider: "WOMPI",
+        customerName: user?.nombre || "",
+        customerEmail: user?.email || "",
+        customerPhone: user?.telefono || "",
+        customerCity: user?.direccion || "",
         items: {
           create: items.map((item: { productId: string; quantity: number; price: number }) => ({
             productId: item.productId,
@@ -94,6 +107,7 @@ export async function POST(request: Request) {
       },
       include: { items: true },
     });
+
     return NextResponse.json({ id: order.id, total: order.totalInCents / 100 }, { status: 201 });
   } catch (error) {
     console.error("Orders POST error:", error);

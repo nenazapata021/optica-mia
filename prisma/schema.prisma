@@ -62,18 +62,38 @@ model ProductImage {
   @@map("product_images")
 }
 
-model Customer {
-  id        String   @id @default(cuid())
-  nombre    String
-  email     String   @unique
-  telefono  String
-  direccion String
-  hasCompletedOnboarding Boolean @default(false)
-  createdAt              DateTime @default(now())
+model User {
+  id                   String    @id @default(cuid())
+  nombre               String
+  email                String    @unique
+  passwordHash         String?   @map("password_hash")
+  role                 String    @default("customer")
+  telefono             String?
+  direccion            String?
+  hasCompletedOnboarding Boolean  @default(false)
+  emailVerified        DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  orders    Order[]
-  favorites Favorite[]
-  photos    ClientPhoto[]
+  orders               Order[]
+  favorites            Favorite[]
+  photos               ClientPhoto[]
+  passwordResetTokens  PasswordResetToken[]
+
+  @@map("users")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 model ClientPhoto {
@@ -85,34 +105,31 @@ model ClientPhoto {
   width      Int      @default(1024)
   height     Int      @default(1024)
   data       Bytes
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
 
   @@map("client_photos")
-  @@index([customerId])
+  @@index([userId])
 }
 
 model Order {
   id              String      @id @default(cuid())
-  customerId      String
-  customer        Customer    @relation(fields: [customerId], references: [id])
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
 
-  // Datos del cliente y monto (si no existen ya en la BD)
   totalInCents    Float       @map("total")
   customerName    String      @default("")
   customerEmail   String      @default("")
   customerPhone   String      @default("")
   customerCity    String      @default("")
 
-  // Validación logística: solo se vende dentro de Medellín/Itagüí
   cityValidated   Boolean     @default(false)
 
-  // Campos de pago unificados para Wompi/Addi/Sistecredito
   paymentProvider PaymentProvider
-  paymentMethod   String?                          // Solo aplica si paymentProvider = WOMPI, valores: CARD, NEQUI, PSE
-  externalId      String?                          // ID de transacción en el proveedor externo
-  status          String      @default("PENDING") // Usado por el dashboard: "pendiente" | "confirmado" | "rechazado"
+  paymentMethod   String?
+  externalId      String?
+  status          String      @default("PENDING")
 
   transactionId   String?     @unique
   wompiStatus     String?
@@ -136,14 +153,14 @@ model OrderItem {
 
 model Favorite {
   id         String   @id @default(cuid())
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId  String
   product    Product  @relation(fields: [productId], references: [id])
   createdAt  DateTime @default(now())
 
-  @@unique([customerId, productId])
-  @@index([customerId])
+  @@unique([userId, productId])
+  @@index([userId])
   @@index([productId])
 }
 
@@ -185,24 +202,20 @@ model Motor {
   productId         String   @unique
   product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  // Catálogo
   marca             String?
   forma             String   @default("Redonda")
   tags              String[]
   badge             String?
 
-  // Imágenes
   imagenCatalogoUrl String
   imagenOverlayUrl  String
 
-  // Calibración Probador Virtual
   anchoRealMm       Float
   anchoImagenPx     Int
   offsetXPx         Float    @default(0)
   offsetYPx         Float    @default(0)
   anguloBaseGrados  Float    @default(0)
 
-  // Estado
   activo            Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

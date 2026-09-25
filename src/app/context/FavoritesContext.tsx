@@ -2,9 +2,9 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import type { Producto } from "../types/producto";
+import { useAuth } from "./AuthContext";
 
 const LS_KEY = "optica-mia-favorites";
-const LS_CUSTOMER_KEY = "optica-mia-customer-data";
 
 interface FavoritesContextType {
   favorites: Producto[];
@@ -22,17 +22,6 @@ export const useFavorites = () => {
   return context;
 };
 
-function getCustomerId(): string | null {
-  try {
-    const data = localStorage.getItem(LS_CUSTOMER_KEY);
-    if (data) {
-      const parsed = JSON.parse(data);
-      return parsed.id || null;
-    }
-  } catch {}
-  return null;
-}
-
 function loadLocalFavorites(): Producto[] {
   try {
     const stored = localStorage.getItem(LS_KEY);
@@ -47,21 +36,18 @@ function saveLocalFavorites(favorites: Producto[]) {
 }
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
+  const { user, isLoading: authLoading } = useAuth();
   const [favorites, setFavorites] = useState<Producto[]>([]);
-  const [customerId, setCustomerId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    // Lectura de localStorage en montaje; evita mismatch de hidratación SSR
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCustomerId(getCustomerId());
     setFavorites(loadLocalFavorites());
     setLoaded(true);
   }, []);
 
   useEffect(() => {
-    if (!loaded || !customerId) return;
-    fetch(`/api/favorites?customerId=${customerId}`)
+    if (!loaded || authLoading || !user) return;
+    fetch("/api/favorites")
       .then((res) => {
         if (!res.ok) throw new Error("API error");
         return res.json();
@@ -84,31 +70,32 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {});
-  }, [customerId, loaded]);
+  }, [user, loaded, authLoading]);
 
   const toggleFavorite = useCallback(async (producto: Producto) => {
-    const cid = getCustomerId();
-    if (cid) {
-      setFavorites((prev) => {
-        const exists = prev.some((p) => p.id === producto.id);
-        const next = exists ? prev.filter((p) => p.id !== producto.id) : [...prev, producto];
-        saveLocalFavorites(next);
-        return next;
-      });
-      fetch("/api/favorites", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId: cid, productId: producto.id }),
-      }).catch(() => {});
-    } else {
+    if (!user) {
       setFavorites((prev) => {
         const exists = prev.find((p) => p.id === producto.id);
         const next = exists ? prev.filter((p) => p.id !== producto.id) : [...prev, producto];
         saveLocalFavorites(next);
         return next;
       });
+      return;
     }
-  }, []);
+
+    setFavorites((prev) => {
+      const exists = prev.some((p) => p.id === producto.id);
+      const next = exists ? prev.filter((p) => p.id !== producto.id) : [...prev, producto];
+      saveLocalFavorites(next);
+      return next;
+    });
+
+    fetch("/api/favorites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId: producto.id }),
+    }).catch(() => {});
+  }, [user]);
 
   const isFavorite = useCallback(
     (id: string) => favorites.some((p) => p.id === id),

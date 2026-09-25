@@ -1,10 +1,28 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
 });
+
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12);
+}
+
+async function createAdminUser() {
+  const adminEmail = process.env.ADMIN_EMAIL!;
+  const adminPassword = process.env.ADMIN_PASSWORD!;
+  
+  const passwordHash = await hashPassword(adminPassword);
+  
+  await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: { passwordHash, role: "admin", nombre: "Admin" },
+    create: { email: adminEmail, nombre: "Admin", passwordHash, role: "admin" }
+  });
+}
 
 async function main() {
   const products = [
@@ -51,8 +69,6 @@ async function main() {
       create: product,
     });
 
-    // Upsert 4-5 ángulos por producto: FRONTAL + variantes laterales/3/4/detalle
-    // Usa la misma imagen base como fallback si no existen assets específicos por ángulo.
     const baseName = product.image.replace(/\.(jpg|png|webp)$/i, "");
     const angles: Array<{ angle: "FRONTAL" | "LATERAL_DERECHO" | "LATERAL_IZQUIERDO" | "TRES_CUARTOS" | "DETALLE"; suffix: string; alt: string }> = [
       { angle: "FRONTAL", suffix: "", alt: `${product.name} - Vista frontal` },
@@ -63,7 +79,6 @@ async function main() {
     ];
     for (let i = 0; i < angles.length; i++) {
       const a = angles[i];
-      // En seed usamos URL base; en producción reemplazar por assets reales por ángulo
       const url = i === 0 ? product.image : `${baseName}${a.suffix}.jpg`;
       await prisma.productImage.upsert({
         where: { productId_sortOrder: { productId: product.id, sortOrder: i } },
@@ -129,6 +144,9 @@ async function main() {
   }
 
   console.log(`Seed completado: ${motors.length} motores insertados`);
+
+  await createAdminUser();
+  console.log("Admin user creado/actualizado");
 }
 
 main()

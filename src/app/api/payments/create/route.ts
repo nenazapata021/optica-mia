@@ -110,7 +110,7 @@ export async function POST(request: Request) {
     // 1. Obtener el pedido real desde Prisma (nunca confiar en el monto que venga del frontend)
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { customer: true },
+      include: { user: true },
     });
 
     if (!order) {

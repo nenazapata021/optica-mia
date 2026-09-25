@@ -8,6 +8,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-optica_mia}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     healthcheck:
       test:
         [
@@ -35,6 +37,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-optica_mia}
       RUN_SEED: ${RUN_SEED:-false}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@optica-mia.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme123}
       NODE_ENV: production
       WOMPI_API_URL: ${WOMPI_API_URL:-https://sandbox.wompi.co/v1}
       WOMPI_PUBLIC_KEY: ${WOMPI_PUBLIC_KEY:-}

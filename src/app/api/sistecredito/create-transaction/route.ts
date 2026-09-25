@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import crypto from "crypto";
 
 const sistecreditoBaseUrl = process.env.SISTECREDITO_API_BASE_URL ?? "https://api.sistecredito.co";
 const sistecreditoClientId = process.env.SISTECREDITO_CLIENT_ID ?? "";
@@ -41,6 +42,11 @@ export async function POST(request: Request) {
 
     // Referencia única
     const reference = `SIS-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+
+    // Buscar usuario por email
+    const user = await prisma.user.findUnique({
+      where: { email: customer.email }
+    });
 
     // Crear transacción en Sistecrédito
     let data;
@@ -94,7 +100,7 @@ export async function POST(request: Request) {
     // Crear la orden en la BD con paymentProvider = "SISTECREDITO"
     const orden = await prisma.order.create({
       data: {
-        customerId: customer.email,
+        userId: user?.id || customer.email,
         customerName: customer.full_name,
         customerEmail: customer.email,
         customerPhone: customer.phone_number ?? "",

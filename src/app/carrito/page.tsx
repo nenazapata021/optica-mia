@@ -6,10 +6,8 @@ import type { StaticImageData } from "next/image";
 import Link from "next/link";
 import { Trash2, ShoppingCart, ArrowRight, Plus, Minus, Check } from "lucide-react";
 import { useCart, type CartItem } from "../context/CartContextType";
-import RegistroCliente from "../registro/RegistroCliente";
+import { useAuth } from "../context/AuthContext";
 import PaymentModal from "../wompi/PaymentModal";
-
-const LS_CUSTOMER_KEY = "optica-mia-customer-data";
 
 const COLOR_MAP: Record<string, string> = {
   "vino": "#6E2A35",
@@ -29,8 +27,6 @@ const COLOR_MAP: Record<string, string> = {
   "negro brillante": "#0D0D0D",
 };
 
-// IDs de producto conocidos desde el catálogo en src/app/data/productos.js
-// Esto incluye tanto los lentes como las gafas de sol
 const CATALOG_PRODUCT_IDS = new Set([
   "foto1", "foto2", "foto3", "foto4", "foto5", "foto6", "foto7", "foto8",
   "foto9", "foto10", "foto11", "foto12", "foto13", "foto14", "foto15",
@@ -44,8 +40,6 @@ function colorHex(nombre: string): string {
 }
 
 function esIDProductoValido(id: string): boolean {
-  // Verifica si el ID es un ID de producto conocido del catálogo
-  // (foto1-foto21 o gafas-de-sol*)
   return CATALOG_PRODUCT_IDS.has(id.toLowerCase());
 }
 
@@ -107,6 +101,7 @@ function SelectorColor({
 }
 
 export default function CarritoPage() {
+  const { user, isLoading } = useAuth();
   const {
     cartItems,
     totalPrice,
@@ -118,7 +113,6 @@ export default function CarritoPage() {
   } = useCart();
 
   const [isClient, setIsClient] = useState(false);
-  const [showRegistro, setShowRegistro] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentCustomer, setPaymentCustomer] = useState<{
     customerId: string;
@@ -134,8 +128,6 @@ export default function CarritoPage() {
   const [editColorId, setEditColorId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Marca el componente como montado en cliente (evita mismatch de hidratación SSR)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsClient(true);
   }, []);
 
@@ -144,51 +136,30 @@ export default function CarritoPage() {
   };
 
   const handlePago = () => {
-    const raw = localStorage.getItem(LS_CUSTOMER_KEY);
-    if (!raw) {
-      setShowRegistro(true);
+    if (!user) {
       return;
     }
-    const customerData = JSON.parse(raw);
-    
-    // Validación previa: verificar que todos los productos del carrito sean válidos
+
     const idsNoValidos = obtenerIDsNoValidos(cartItems);
     if (idsNoValidos.length > 0) {
-      // Mostrar error claro al usuario
-      // Los IDs no válidos podrían ser nombres de archivo en lugar de IDs de producto
       const mensaje = idsNoValidos.length === 1
         ? `El producto con ID "${idsNoValidos[0]}" no es un ID de producto reconocido. `
         : `Los siguientes IDs de producto no son reconocidos: ${idsNoValidos.join(", ")}. ` +
           "Por favor verifique que sus productos estén en el catálogo.";
       
-      // En un entorno de producción, aquí podríamos mostrar un modal o toast
       console.error("Error de validación de productos:", mensaje);
       alert(mensaje + " Por favor, regrese al catálogo y vuelva a agregar los productos.");
       return;
     }
     
-    const customerId = customerData.id;
     setPaymentCustomer({
-      customerId: customerData.id,
+      customerId: user.id,
       info: {
-        email: customerData.email,
-        full_name: customerData.nombre,
-        phone_number: customerData.telefono,
-      },
-    });
-    setShowPayment(true);
-  };
-
-  const handleRegistroSuccess = (customerId: string) => {
-    setShowRegistro(false);
-    const raw = localStorage.getItem(LS_CUSTOMER_KEY);
-    const customerData = raw ? JSON.parse(raw) : {};
-    setPaymentCustomer({
-      customerId,
-      info: {
-        email: customerData.email,
-        full_name: customerData.nombre,
-        phone_number: customerData.telefono,
+        email: user.email,
+        full_name: user.nombre,
+        phone_number: undefined,
+        legal_id: undefined,
+        legal_id_type: undefined,
       },
     });
     setShowPayment(true);
@@ -199,6 +170,18 @@ export default function CarritoPage() {
     setPedidoCompletado(true);
     clearCart();
   };
+
+  if (isLoading) {
+    return (
+      <main className="w-full min-h-screen bg-[#f8fafc] py-8 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="w-full min-h-screen bg-[#f8fafc] py-8 px-4">
@@ -404,7 +387,8 @@ export default function CarritoPage() {
 
               <button
                 onClick={handlePago}
-                className="w-full mt-5 bg-[#008294] text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#005f6b] shadow-md hover:shadow-lg transition-all min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#008294] focus-visible:ring-offset-2"
+                disabled={!user}
+                className="w-full mt-5 bg-[#008294] text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#005f6b] shadow-md hover:shadow-lg transition-all min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#008294] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Pagar con Wompi
                 <ArrowRight size={20} />
@@ -421,13 +405,6 @@ export default function CarritoPage() {
           </div>
         )}
 
-        {showRegistro && (
-          <RegistroCliente
-            onClose={() => setShowRegistro(false)}
-            onSuccess={handleRegistroSuccess}
-          />
-        )}
-
         {showPayment && paymentCustomer && (
           <PaymentModal
             customerId={paymentCustomer.customerId}
@@ -440,7 +417,7 @@ export default function CarritoPage() {
         {pedidoCompletado && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
             <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
-              <h2 className="mb-2 text-2xl font-bold text-gray-800">\u00a1Pedido recibido!</h2>
+              <h2 className="mb-2 text-2xl font-bold text-gray-800">¡Pedido recibido!</h2>
               <p className="mb-6 text-sm text-gray-500">
                 Te contactaremos pronto para confirmar tu pedido.
               </p>
