@@ -2,13 +2,15 @@ services:
   app:
     build:
       target: dev
-    environment:
-      NODE_ENV: development
-      RUN_SEED: ${RUN_SEED:-false}
-      WATCHPACK_POLLING: "true"
-      APP_MODE: dev
-      NEXT_PUBLIC_BREB_KEY: ${NEXT_PUBLIC_BREB_KEY:-@MGA313}
-      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+environment:
+    NODE_ENV: development
+    RUN_SEED: ${RUN_SEED:-false}
+    WATCHPACK_POLLING: "true"
+    APP_MODE: dev
+    NEXT_PUBLIC_BREB_KEY: ${NEXT_PUBLIC_BREB_KEY:-@MGA313}
+    NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+    AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+    AUTH_SECRET: ${AUTH_SECRET}
     volumes:
       - .:/app
       - /app/node_modules
