@@ -37,37 +37,39 @@ function computeCoverMapping(videoW: number, videoH: number, containerW: number,
   };
 }
 
-/* ─── Singleton del modelo MediaPipe ───────────────────────── */
-let landmarkerCache: { landmarker: unknown; delegate: "GPU" | "CPU" } | null = null;
+/* ─── Singletons del modelo MediaPipe ──────────────────────── */
+let landmarkerCacheVideo: { landmarker: unknown; delegate: "GPU" | "CPU" } | null = null;
+let landmarkerCacheImage: { landmarker: unknown; delegate: "GPU" | "CPU" } | null = null;
 
-async function loadFaceLandmarker(): Promise<{ landmarker: unknown; delegate: "GPU" | "CPU" }> {
-  if (landmarkerCache) return landmarkerCache;
+async function createLandmarker(runningMode: "VIDEO" | "IMAGE", delegate: "GPU" | "CPU") {
   const vision = await import("@mediapipe/tasks-vision");
   const fileset = await vision.FilesetResolver.forVisionTasks(TRY_ON_CONFIG.faceLandmarker.basePath);
-  const base = { modelAssetPath: TRY_ON_CONFIG.faceLandmarker.modelUrl };
-  const common = {
-    runningMode: "VIDEO" as const,
+  return vision.FaceLandmarker.createFromOptions(fileset, {
+    baseOptions: { modelAssetPath: TRY_ON_CONFIG.faceLandmarker.modelUrl, delegate },
+    runningMode,
     numFaces: 1,
     minFaceDetectionConfidence: 0.5,
     minFacePresenceConfidence: 0.5,
     minTrackingConfidence: 0.5,
     outputFaceBlendshapes: false,
-  };
+  });
+}
+
+async function loadFaceLandmarker(runningMode: "VIDEO" | "IMAGE" = "VIDEO"): Promise<{ landmarker: unknown; delegate: "GPU" | "CPU" }> {
+  const cache = runningMode === "VIDEO" ? landmarkerCacheVideo : landmarkerCacheImage;
+  if (cache) return cache;
+
   try {
-    const lm = await vision.FaceLandmarker.createFromOptions(fileset, {
-      baseOptions: { ...base, delegate: "GPU" as const },
-      ...common,
-    });
-    const result = { landmarker: lm, delegate: "GPU" as const };
-    landmarkerCache = result;
+    const landmarker = await createLandmarker(runningMode, "GPU");
+    const result = { landmarker, delegate: "GPU" as const };
+    if (runningMode === "VIDEO") landmarkerCacheVideo = result;
+    else landmarkerCacheImage = result;
     return result;
   } catch {
-    const lm = await vision.FaceLandmarker.createFromOptions(fileset, {
-      baseOptions: { ...base, delegate: "CPU" as const },
-      ...common,
-    });
-    const result = { landmarker: lm, delegate: "CPU" as const };
-    landmarkerCache = result;
+    const landmarker = await createLandmarker(runningMode, "CPU");
+    const result = { landmarker, delegate: "CPU" as const };
+    if (runningMode === "VIDEO") landmarkerCacheVideo = result;
+    else landmarkerCacheImage = result;
     return result;
   }
 }
@@ -135,7 +137,7 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
 
     setStatus("loading-model");
     try {
-      const { landmarker } = await loadFaceLandmarker();
+      const { landmarker } = await loadFaceLandmarker("IMAGE");
       landmarkerRef.current = landmarker;
 
       const result = (landmarker as any).detect(faceImg);

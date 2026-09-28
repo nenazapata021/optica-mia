@@ -115,7 +115,8 @@ export default function SimulacionVirtual() {
               </div>
               <VirtualTryOn
                 glassesFrontalImageUrl={datos.producto.image}
-                scaleMultiplier={datos.producto.scaleMultiplier}
+                faceSrc={datos.fotoUrl}
+                scaleMultiplier={datos.producto.scaleMultiplier ?? 1}
               />
               <div className="mt-3 grid grid-cols-3 gap-2">
                 <div className="rounded-xl bg-white border p-3 text-center">
