@@ -34,7 +34,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://optica:optica@postgres:5432/optica_mia?schema=public}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://optica:optica@postgres-1:5432/optica_mia?schema=public&connection_limit=20}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_USER: ${POSTGRES_USER:-optica}
