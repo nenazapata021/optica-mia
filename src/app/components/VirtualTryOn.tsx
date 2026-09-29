@@ -4,14 +4,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Camera, CameraOff, ScanFace, RefreshCcw, Upload } from "lucide-react";
 import { TRY_ON_CONFIG } from "../config/tryOn";
 
-/* ─── Tipos locales ──────────────────────────────────────── */
-type TryOnStatus = "idle" | "loading-model" | "starting-camera" | "running" | "error";
+type TryOnStatus = "idle" | "pidiendo_permiso" | "cargando_modelo" | "starting-camera" | "running" | "error";
+
 interface SmoothedPose {
   x: number; y: number; widthPx: number;
   rollDeg: number; yawDeg: number; pitchDeg: number;
 }
 
-/* ─── Helpers ─────────────────────────────────────────────── */
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const lerp = (a: number, b: number, alpha: number) => a + (b - a) * alpha;
 
@@ -37,7 +36,16 @@ function computeCoverMapping(videoW: number, videoH: number, containerW: number,
   };
 }
 
-/* ─── Singletons del modelo MediaPipe ──────────────────────── */
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
 let landmarkerCacheVideo: { landmarker: unknown; delegate: "GPU" | "CPU" } | null = null;
 let landmarkerCacheImage: { landmarker: unknown; delegate: "GPU" | "CPU" } | null = null;
 
@@ -60,13 +68,22 @@ async function loadFaceLandmarker(runningMode: "VIDEO" | "IMAGE" = "VIDEO"): Pro
   if (cache) return cache;
 
   try {
-    const landmarker = await createLandmarker(runningMode, "GPU");
+    const landmarker = await withTimeout(
+      createLandmarker(runningMode, "GPU"),
+      TRY_ON_CONFIG.timeouts.modelLoad,
+      "MODEL_LOAD_TIMEOUT",
+    );
     const result = { landmarker, delegate: "GPU" as const };
     if (runningMode === "VIDEO") landmarkerCacheVideo = result;
     else landmarkerCacheImage = result;
     return result;
-  } catch {
-    const landmarker = await createLandmarker(runningMode, "CPU");
+  } catch (err) {
+    if (err instanceof Error && err.message === "MODEL_LOAD_TIMEOUT") throw err;
+    const landmarker = await withTimeout(
+      createLandmarker(runningMode, "CPU"),
+      TRY_ON_CONFIG.timeouts.modelLoad,
+      "MODEL_LOAD_TIMEOUT",
+    );
     const result = { landmarker, delegate: "CPU" as const };
     if (runningMode === "VIDEO") landmarkerCacheVideo = result;
     else landmarkerCacheImage = result;
@@ -74,14 +91,12 @@ async function loadFaceLandmarker(runningMode: "VIDEO" | "IMAGE" = "VIDEO"): Pro
   }
 }
 
-/* ─── Props ───────────────────────────────────────────────── */
 interface VirtualTryOnProps {
   glassesFrontalImageUrl: string;
   faceSrc?: string;
   scaleMultiplier?: number;
 }
 
-/* ─── Componente ──────────────────────────────────────────── */
 export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMultiplier = 1 }: VirtualTryOnProps) {
   const [status, setStatus] = useState<TryOnStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +111,7 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const runningRef = useRef(false);
+  const startingRef = useRef(false);
   const frameCountRef = useRef(0);
   const delegateRef = useRef<"GPU" | "CPU">("GPU");
   const lastSeenAtRef = useRef(0);
@@ -105,42 +121,36 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
   const glassesImgRef = useRef<HTMLImageElement | null>(null);
   const faceImageRef = useRef<HTMLImageElement | null>(null);
   const hasFaceRef = useRef(false);
+  const mountedRef = useRef(true);
 
   const hasFaceSrc = !!faceSrc && faceSrc !== "";
 
-  /* ── Precarga de imágenes ────────────────────────────── */
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => { if (!cancelled) glassesImgRef.current = img; };
+    img.onload = () => { if (!cancelled && mountedRef.current) glassesImgRef.current = img; };
     img.src = glassesFrontalImageUrl;
     return () => { cancelled = true; };
   }, [glassesFrontalImageUrl]);
 
-  useEffect(() => {
-    if (!hasFaceSrc) return;
-    let cancelled = false;
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => { if (!cancelled) { faceImageRef.current = img; detectStaticFace(); } };
-    img.src = faceSrc;
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [faceSrc]);
-
-  /* ── Detectar cara en foto estática ──────────────────── */
   const detectStaticFace = useCallback(async () => {
     const faceImg = faceImageRef.current;
     const glassesImg = glassesImgRef.current;
     if (!faceImg || !glassesImg) return;
 
-    setStatus("loading-model");
+    setStatus("cargando_modelo");
     try {
       const { landmarker } = await loadFaceLandmarker("IMAGE");
+      if (!mountedRef.current) return;
       landmarkerRef.current = landmarker;
 
-      const result = (landmarker as any).detect(faceImg);
+      const result = (landmarker as { detect: (img: HTMLImageElement) => { faceLandmarks?: { x: number; y: number; z: number }[][] } }).detect(faceImg);
       const landmarks = result.faceLandmarks?.[0];
       if (!landmarks || landmarks.length < 478) {
         setStatus("idle");
@@ -148,23 +158,18 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
         return;
       }
 
-      // Compute overlay from landmarks
-      const cfg = TRY_ON_CONFIG.faceMeshEngine;
       const iw = faceImg.naturalWidth;
       const ih = faceImg.naturalHeight;
 
-      // Inner eye corners (133, 362)
       const innerLeftPx = { x: landmarks[133].x * iw, y: landmarks[133].y * ih };
       const innerRightPx = { x: landmarks[362].x * iw, y: landmarks[362].y * ih };
       let anchorX = (innerLeftPx.x + innerRightPx.x) / 2;
       const anchorY = (innerLeftPx.y + innerRightPx.y) / 2;
 
-      // Roll from cheeks
       const cheekL = landmarks[TRY_ON_CONFIG.liveEngine.cheekLeftIndex];
       const cheekR = landmarks[TRY_ON_CONFIG.liveEngine.cheekRightIndex];
       let rollDeg = (Math.atan2(cheekR.y - cheekL.y, cheekR.x - cheekL.x) * 180) / Math.PI;
 
-      // Temple-to-temple scale
       const earLeft = landmarks[234];
       const earRight = landmarks[454];
       const templeDist = Math.hypot(
@@ -174,7 +179,6 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
       const templeMargin = TRY_ON_CONFIG.temple?.templeMarginFactor ?? 1.1;
       const targetWidthPx = templeDist * templeMargin * scaleMultiplier;
 
-      // Mirror correction for selfie-style
       anchorX = iw - anchorX;
       rollDeg = -rollDeg;
 
@@ -189,27 +193,25 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
       hasFaceRef.current = true;
       setStatus("idle");
     } catch {
+      if (!mountedRef.current) return;
       setStatus("idle");
       setError(TRY_ON_CONFIG.messages.detectionError);
     }
   }, [scaleMultiplier]);
 
-  /* ── Mantener tickRef actualizado ──────────────────────── */
   useEffect(() => {
-    tickRef.current = tick;
-  });
-
-  /* ── Cleanup al desmontar ────────────────────────────── */
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
+    if (!hasFaceSrc) return;
+    let cancelled = false;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => { if (!cancelled && mountedRef.current) { faceImageRef.current = img; detectStaticFace(); } };
+    img.src = faceSrc;
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [faceSrc, detectStaticFace]);
 
-  /* ── Bucle de detección en vivo ───────────────────────── */
   const tick = useCallback(async () => {
-    if (!runningRef.current) return;
+    if (!runningRef.current || !mountedRef.current) return;
     const video = videoRef.current;
     const container = containerRef.current;
     if (!video || !container) return;
@@ -226,10 +228,10 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
 
     try {
       const { landmarker } = await loadFaceLandmarker();
-      if (!runningRef.current) return;
+      if (!runningRef.current || !mountedRef.current) return;
       landmarkerRef.current = landmarker;
 
-      const result = (landmarker as any).detectForVideo(video, performance.now());
+      const result = (landmarker as { detectForVideo: (video: HTMLVideoElement, timestamp: number) => { faceLandmarks?: { x: number; y: number; z: number }[][] } }).detectForVideo(video, performance.now());
       const landmarks = result.faceLandmarks?.[0];
       const now = performance.now();
 
@@ -255,7 +257,6 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
       const toPxX = (nx: number) => nx * map.displayedW + map.offsetX;
       const toPxY = (ny: number) => ny * map.displayedH + map.offsetY;
 
-      // Iris centroids
       let lIx = 0, lIy = 0;
       for (let i = 468; i <= 472; i++) { lIx += landmarks[i].x; lIy += landmarks[i].y; }
       lIx /= 5; lIy /= 5;
@@ -263,18 +264,15 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
       for (let i = 473; i <= 477; i++) { rIx += landmarks[i].x; rIy += landmarks[i].y; }
       rIx /= 5; rIy /= 5;
 
-      // Inner eye corners → bridge center
       const innerLeftPx = { x: toPxX(landmarks[133].x), y: toPxY(landmarks[133].y) };
       const innerRightPx = { x: toPxX(landmarks[362].x), y: toPxY(landmarks[362].y) };
       let anchorX = (innerLeftPx.x + innerRightPx.x) / 2;
       const anchorY = (toPxY(landmarks[133].y) + toPxY(landmarks[362].y)) / 2;
 
-      // Roll from cheeks
       const cheekL = landmarks[cfg.cheekLeftIndex];
       const cheekR = landmarks[cfg.cheekRightIndex];
       let rollDeg = (Math.atan2(toPxY(cheekR.y) - toPxY(cheekL.y), toPxX(cheekR.x) - toPxX(cheekL.x)) * 180) / Math.PI;
 
-      // Yaw/Pitch from nose
       const noseTip = landmarks[cfg.noseTipIndex];
       const noseBase = landmarks[cfg.noseBaseIndex];
       const noseBridgeLower = landmarks[cfg.noseBridgeLowerIndex];
@@ -291,14 +289,12 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
       let yawDeg = clamp((yawFromZ * 0.55 + yawFromX * 0.45) * (180 / Math.PI), -clamps.maxYawDeg, clamps.maxYawDeg);
       const pitchDeg = clamp((pitchFromZ * 0.5 + pitchFromY * 0.5) * (180 / Math.PI), -clamps.maxPitchDeg, clamps.maxPitchDeg);
 
-      // Mirror selfie correction
       if (TRY_ON_CONFIG.liveEngine.mirrorPreview) {
         anchorX = cw - anchorX;
         rollDeg = -rollDeg;
         yawDeg = -yawDeg;
       }
 
-      // Scale
       const multiplier = scaleMultiplier;
       const templeMargin = TRY_ON_CONFIG.temple?.templeMarginFactor ?? 1.1;
       const earLeft = landmarks[234];
@@ -308,7 +304,6 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
       const templeDist = Math.hypot(earRightPx.x - earLeftPx.x, earRightPx.y - earLeftPx.y);
       const targetWidthPx = templeDist * templeMargin * multiplier;
 
-      // Smoothing
       const prev = smoothedRef.current;
       let sx = anchorX, sy = anchorY, sw = targetWidthPx, sRoll = rollDeg, sYaw = yawDeg, sPitch = pitchDeg;
       if (prev) {
@@ -333,40 +328,71 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
     scheduleNextFrame(video, tickRef.current!, rafRef);
   }, [scaleMultiplier]);
 
-  /* ── Start camera ──────────────────────────────────────── */
+  useEffect(() => {
+    tickRef.current = tick;
+  }, [tick]);
+
+  const stopCamera = useCallback(() => {
+    runningRef.current = false;
+    startingRef.current = false;
+    if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
+    const video = videoRef.current;
+    if (video) video.srcObject = null;
+    frameCountRef.current = 0;
+    lastSeenAtRef.current = 0;
+    smoothedRef.current = null;
+    setTransform(null);
+    setScale(null);
+    setIsFaceDetected(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, [stopCamera]);
+
   const start = useCallback(async () => {
+    if (startingRef.current) return;
+    startingRef.current = true;
+
     setError(null);
-    setStatus("loading-model");
+    setStatus("cargando_modelo");
 
     try {
       const { delegate } = await loadFaceLandmarker();
+      if (!mountedRef.current) { startingRef.current = false; return; }
       delegateRef.current = delegate;
-    } catch {
+    } catch (err) {
+      startingRef.current = false;
       setStatus("error");
-      setError(TRY_ON_CONFIG.messages.modelError);
+      if (err instanceof Error && err.message === "MODEL_LOAD_TIMEOUT") {
+        setError(TRY_ON_CONFIG.messages.modelTimeout);
+      } else {
+        setError(TRY_ON_CONFIG.messages.modelError);
+      }
       return;
     }
 
-    setStatus("starting-camera");
+    setStatus("pidiendo_permiso");
+    let stream: MediaStream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: TRY_ON_CONFIG.videoConstraints,
-        audio: false,
-      });
-      streamRef.current = stream;
-      const video = videoRef.current;
-      if (!video) throw new Error("video-element-missing");
-      video.srcObject = stream;
-      if (video.readyState < 1) {
-        await new Promise<void>((resolve) => {
-          const onReady = () => { video.removeEventListener("loadedmetadata", onReady); resolve(); };
-          video.addEventListener("loadedmetadata", onReady);
-        });
-      }
-      await video.play();
+      stream = await withTimeout(
+        navigator.mediaDevices.getUserMedia({
+          video: TRY_ON_CONFIG.videoConstraints,
+          audio: false,
+        }),
+        TRY_ON_CONFIG.timeouts.cameraPermission,
+        "CAMERA_PERMISSION_TIMEOUT",
+      );
     } catch (err) {
-      stopCamera();
+      startingRef.current = false;
       setStatus("error");
+      if (err instanceof Error && err.message === "CAMERA_PERMISSION_TIMEOUT") {
+        setError(TRY_ON_CONFIG.messages.cameraTimeout);
+        return;
+      }
       const name = err instanceof DOMException ? err.name : "";
       if (name === "NotAllowedError" || name === "SecurityError") {
         setError(TRY_ON_CONFIG.messages.cameraDenied);
@@ -380,28 +406,62 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
       return;
     }
 
+    if (!mountedRef.current) {
+      stream.getTracks().forEach((t) => t.stop());
+      startingRef.current = false;
+      return;
+    }
+
+    setStatus("starting-camera");
+    streamRef.current = stream;
+    const video = videoRef.current;
+    if (!video) {
+      stream.getTracks().forEach((t) => t.stop());
+      startingRef.current = false;
+      setStatus("error");
+      setError(TRY_ON_CONFIG.messages.cameraNotFound);
+      return;
+    }
+    video.srcObject = stream;
+    try {
+      if (video.readyState < 1) {
+        await withTimeout(
+          new Promise<void>((resolve) => {
+            const onReady = () => { video.removeEventListener("loadedmetadata", onReady); resolve(); };
+            video.addEventListener("loadedmetadata", onReady);
+          }),
+          TRY_ON_CONFIG.timeouts.videoReady,
+          "VIDEO_READY_TIMEOUT",
+        );
+      }
+      await withTimeout(
+        video.play(),
+        TRY_ON_CONFIG.timeouts.videoPlay,
+        "VIDEO_PLAY_TIMEOUT",
+      );
+    } catch (err) {
+      stopCamera();
+      setStatus("error");
+      if (err instanceof Error && (err.message === "VIDEO_READY_TIMEOUT" || err.message === "VIDEO_PLAY_TIMEOUT")) {
+        setError(TRY_ON_CONFIG.messages.cameraTimeout);
+      } else {
+        setError(TRY_ON_CONFIG.messages.cameraInUse);
+      }
+      return;
+    }
+
+    if (!mountedRef.current) {
+      stopCamera();
+      return;
+    }
+
     setStatus("running");
     setIsFaceDetected(false);
     runningRef.current = true;
     if (videoRef.current) {
       scheduleNextFrame(videoRef.current, tickRef.current!, rafRef);
     }
-  }, [scaleMultiplier]);
-
-  /* ── Stop camera ───────────────────────────────────────── */
-  const stopCamera = useCallback(() => {
-    runningRef.current = false;
-    if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-    if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
-    const video = videoRef.current;
-    if (video) video.srcObject = null;
-    frameCountRef.current = 0;
-    lastSeenAtRef.current = 0;
-    smoothedRef.current = null;
-    setTransform(null);
-    setScale(null);
-    setIsFaceDetected(false);
-  }, []);
+  }, [stopCamera]);
 
   const stop = useCallback(() => {
     stopCamera();
@@ -409,7 +469,6 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
     setError(null);
   }, [stopCamera]);
 
-  /* ── File upload handler (static mode) ────────────────── */
   const handleUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -431,7 +490,6 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
     e.target.value = "";
   }, [detectStaticFace]);
 
-  /* ── Draw loop (Canvas 2D) ─────────────────────────────── */
   const drawRef = useRef<number | null>(null);
   useEffect(() => {
     if (status !== "running" && !hasFaceSrc) return;
@@ -454,20 +512,17 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (hasFaceSrc) {
-        // Static mode: draw the uploaded photo
         const faceImg = faceImageRef.current;
         if (faceImg) {
           ctx.drawImage(faceImg, 0, 0, canvas.width, canvas.height);
         }
       } else if (video && video.readyState >= 2) {
-        // Live mode: draw mirrored video
         ctx.save();
         ctx.scale(-1, 1);
         ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
         ctx.restore();
       }
 
-      // Draw glasses overlay
       if (transform && glassesImg) {
         ctx.save();
         ctx.translate(canvas.width / 2, canvas.height / 2);
@@ -492,14 +547,12 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
     return () => { if (drawRef.current !== null) cancelAnimationFrame(drawRef.current); };
   }, [status, transform, scale, hasFaceSrc]);
 
-  /* ── Render UI ─────────────────────────────────────────── */
-  const busy = status === "loading-model" || status === "starting-camera";
+  const busy = status === "cargando_modelo" || status === "starting-camera" || status === "pidiendo_permiso";
   const isLive = !hasFaceSrc;
 
   return (
     <div className="w-full" ref={containerRef}>
       <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl border-4 border-[#005f6b] bg-slate-900 shadow-lg">
-        {/* Video (mirrored) */}
         {isLive && (
           <video
             ref={videoRef}
@@ -510,25 +563,24 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
           />
         )}
 
-        {/* Canvas overlay */}
         <canvas
           ref={canvasRef}
           className="absolute inset-0 h-full w-full object-contain"
         />
 
-        {/* Loading overlay */}
         {busy && (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80">
             <div className="flex items-center gap-3 rounded-xl bg-white px-5 py-3 shadow-lg">
               <ScanFace size={20} className="animate-spin text-[#008294]" />
               <span className="text-sm font-medium text-slate-700">
-                {status === "loading-model" ? "Cargando motor de detección..." : "Activando cámara..."}
+                {status === "cargando_modelo" && "Cargando motor de detección..."}
+                {status === "pidiendo_permiso" && "Esperando permiso de cámara..."}
+                {status === "starting-camera" && "Activando cámara..."}
               </span>
             </div>
           </div>
         )}
 
-        {/* Idle → CTA */}
         {status === "idle" && isLive && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-900/80 px-6 text-center">
             <ScanFace size={44} className="text-slate-400" />
@@ -544,7 +596,6 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
           </div>
         )}
 
-        {/* Static mode: upload button if no face detected */}
         {status === "idle" && hasFaceSrc && !isFaceDetected && !busy && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-900/80 px-6 text-center">
             <Upload size={44} className="text-slate-400" />
@@ -557,7 +608,6 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
           </div>
         )}
 
-        {/* Error */}
         {status === "error" && error && (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-900/85 px-6">
             <div className="flex flex-col items-center gap-3 rounded-2xl bg-white px-6 py-5 text-center shadow-lg">
@@ -574,7 +624,6 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
           </div>
         )}
 
-        {/* Running */}
         {status === "running" && (
           <>
             {!isFaceDetected && (

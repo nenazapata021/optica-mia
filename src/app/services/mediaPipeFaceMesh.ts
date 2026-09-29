@@ -42,27 +42,64 @@ export class MediaPipeFaceMeshEngine {
         TRY_ON_CONFIG.faceLandmarker.basePath,
       );
 
-      this.faceLandmarker = await FaceLandmarker.createFromOptions(fileset, {
-        baseOptions: {
-          modelAssetPath: TRY_ON_CONFIG.faceLandmarker.modelUrl,
-          delegate: "GPU",
-        },
-        runningMode: mode,
-        minFaceDetectionConfidence:
-          TRY_ON_CONFIG.faceLandmarker.minFaceDetectionConfidence,
-        minFacePresenceConfidence:
-          TRY_ON_CONFIG.faceLandmarker.minFacePresenceConfidence,
-        minTrackingConfidence:
-          TRY_ON_CONFIG.faceLandmarker.minTrackingConfidence,
-        outputFaceBlendshapes:
-          TRY_ON_CONFIG.faceLandmarker.outputFaceBlendshapes,
-        numFaces: TRY_ON_CONFIG.faceLandmarker.maxFaces,
-      });
+      const timeoutMs = TRY_ON_CONFIG.timeouts.modelLoad;
+
+      try {
+        this.faceLandmarker = await this.withTimeout(
+          FaceLandmarker.createFromOptions(fileset, {
+            baseOptions: {
+              modelAssetPath: TRY_ON_CONFIG.faceLandmarker.modelUrl,
+              delegate: "GPU",
+            },
+            runningMode: mode,
+            minFaceDetectionConfidence:
+              TRY_ON_CONFIG.faceLandmarker.minFaceDetectionConfidence,
+            minFacePresenceConfidence:
+              TRY_ON_CONFIG.faceLandmarker.minFacePresenceConfidence,
+            minTrackingConfidence:
+              TRY_ON_CONFIG.faceLandmarker.minTrackingConfidence,
+            outputFaceBlendshapes:
+              TRY_ON_CONFIG.faceLandmarker.outputFaceBlendshapes,
+            numFaces: TRY_ON_CONFIG.faceLandmarker.maxFaces,
+          }),
+          timeoutMs,
+        );
+      } catch {
+        this.faceLandmarker = await this.withTimeout(
+          FaceLandmarker.createFromOptions(fileset, {
+            baseOptions: {
+              modelAssetPath: TRY_ON_CONFIG.faceLandmarker.modelUrl,
+              delegate: "CPU",
+            },
+            runningMode: mode,
+            minFaceDetectionConfidence:
+              TRY_ON_CONFIG.faceLandmarker.minFaceDetectionConfidence,
+            minFacePresenceConfidence:
+              TRY_ON_CONFIG.faceLandmarker.minFacePresenceConfidence,
+            minTrackingConfidence:
+              TRY_ON_CONFIG.faceLandmarker.minTrackingConfidence,
+            outputFaceBlendshapes:
+              TRY_ON_CONFIG.faceLandmarker.outputFaceBlendshapes,
+            numFaces: TRY_ON_CONFIG.faceLandmarker.maxFaces,
+          }),
+          timeoutMs,
+        );
+      }
 
       this.currentMode = mode;
     })();
 
     return this.loadPromise;
+  }
+
+  private withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("MODEL_LOAD_TIMEOUT")), ms);
+      promise.then(
+        (val) => { clearTimeout(timer); resolve(val); },
+        (err) => { clearTimeout(timer); reject(err); },
+      );
+    });
   }
 
   async switchMode(mode: RunningMode): Promise<void> {
