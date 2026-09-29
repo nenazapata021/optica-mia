@@ -11,6 +11,15 @@ interface SmoothedPose {
   rollDeg: number; yawDeg: number; pitchDeg: number;
 }
 
+interface GlassesTransform {
+  x: number;
+  y: number;
+  widthPx: number;
+  rollDeg: number;
+  yawDeg: number;
+  pitchDeg: number;
+}
+
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const lerp = (a: number, b: number, alpha: number) => a + (b - a) * alpha;
 
@@ -101,8 +110,7 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
   const [status, setStatus] = useState<TryOnStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [isFaceDetected, setIsFaceDetected] = useState(false);
-  const [transform, setTransform] = useState<string | null>(null);
-  const [scale, setScale] = useState<number | null>(null);
+  const [glassesTransform, setGlassesTransform] = useState<GlassesTransform | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -184,11 +192,7 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
 
       smoothedRef.current = { x: anchorX, y: anchorY, widthPx: targetWidthPx, rollDeg, yawDeg: 0, pitchDeg: 0 };
 
-      setTransform(
-        `translate(${anchorX.toFixed(2)}px, ${anchorY.toFixed(2)}px) translate(-50%, -50%) ` +
-        `rotate(${rollDeg.toFixed(2)}deg) perspective(${TRY_ON_CONFIG.perspectivePx}px) rotateY(0deg) rotateX(0deg)`,
-      );
-      setScale(Math.round(targetWidthPx));
+      setGlassesTransform({ x: anchorX, y: anchorY, widthPx: targetWidthPx, rollDeg, yawDeg: 0, pitchDeg: 0 });
       setIsFaceDetected(true);
       hasFaceRef.current = true;
       setStatus("idle");
@@ -317,12 +321,7 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
       }
       smoothedRef.current = { x: sx, y: sy, widthPx: sw, rollDeg: sRoll, yawDeg: sYaw, pitchDeg: sPitch };
 
-      setTransform(
-        `translate(${sx.toFixed(2)}px, ${sy.toFixed(2)}px) translate(-50%, -50%) ` +
-        `rotate(${sRoll.toFixed(2)}deg) perspective(${TRY_ON_CONFIG.perspectivePx}px) ` +
-        `rotateY(${sYaw.toFixed(2)}deg) rotateX(${sPitch.toFixed(2)}deg)`,
-      );
-      setScale(Math.round(sw));
+      setGlassesTransform({ x: sx, y: sy, widthPx: sw, rollDeg: sRoll, yawDeg: sYaw, pitchDeg: sPitch });
     } catch { /* frame transients */ }
 
     scheduleNextFrame(video, tickRef.current!, rafRef);
@@ -342,8 +341,7 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
     frameCountRef.current = 0;
     lastSeenAtRef.current = 0;
     smoothedRef.current = null;
-    setTransform(null);
-    setScale(null);
+    setGlassesTransform(null);
     setIsFaceDetected(false);
   }, []);
 
@@ -479,8 +477,7 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
       img.onload = () => {
         faceImageRef.current = img;
         hasFaceRef.current = false;
-        setTransform(null);
-        setScale(null);
+        setGlassesTransform(null);
         setIsFaceDetected(false);
         detectStaticFace();
       };
@@ -514,26 +511,41 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
       if (hasFaceSrc) {
         const faceImg = faceImageRef.current;
         if (faceImg) {
-          ctx.drawImage(faceImg, 0, 0, canvas.width, canvas.height);
+          const coverScale = Math.max(canvas.width / faceImg.naturalWidth, canvas.height / faceImg.naturalHeight);
+          const dw = faceImg.naturalWidth * coverScale;
+          const dh = faceImg.naturalHeight * coverScale;
+          const dx = (canvas.width - dw) / 2;
+          const dy = (canvas.height - dh) / 2;
+          ctx.drawImage(faceImg, dx, dy, dw, dh);
         }
       } else if (video && video.readyState >= 2) {
+        const coverScale = Math.max(canvas.width / video.videoWidth, canvas.height / video.videoHeight);
+        const dw = video.videoWidth * coverScale;
+        const dh = video.videoHeight * coverScale;
+        const dx = (canvas.width - dw) / 2;
+        const dy = (canvas.height - dh) / 2;
         ctx.save();
+        ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
-        ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, dx, dy, dw, dh);
         ctx.restore();
       }
 
-      if (transform && glassesImg) {
-        ctx.save();
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        const tMatch = transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
-        const rMatch = transform.match(/rotate\(([-\d.]+)deg\)/);
-        if (tMatch) {
-          ctx.translate(parseFloat(tMatch[1]), parseFloat(tMatch[2]));
-        }
-        if (rMatch) ctx.rotate(parseFloat(rMatch[1]) * Math.PI / 180);
-        const gw = scale || 200;
+      if (glassesTransform && glassesImg) {
+        const gt = glassesTransform;
+        const gw = gt.widthPx;
         const gh = gw * (glassesImg.naturalHeight / glassesImg.naturalWidth);
+
+        ctx.save();
+        ctx.translate(gt.x, gt.y);
+        ctx.rotate((gt.rollDeg * Math.PI) / 180);
+
+        const yawRad = (gt.yawDeg * Math.PI) / 180;
+        const pitchRad = (gt.pitchDeg * Math.PI) / 180;
+        const scaleX = Math.cos(yawRad);
+        const scaleY = Math.cos(pitchRad);
+        ctx.scale(scaleX, scaleY);
+
         const isOverlay = glassesImg.src.includes("sin-fondo") || glassesImg.src.endsWith(".png");
         ctx.globalCompositeOperation = isOverlay ? "source-over" : "multiply";
         ctx.drawImage(glassesImg, -gw / 2, -gh / 2, gw, gh);
@@ -545,7 +557,7 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
     };
     drawRef.current = requestAnimationFrame(draw);
     return () => { if (drawRef.current !== null) cancelAnimationFrame(drawRef.current); };
-  }, [status, transform, scale, hasFaceSrc]);
+  }, [status, glassesTransform, hasFaceSrc]);
 
   const busy = status === "cargando_modelo" || status === "starting-camera" || status === "pidiendo_permiso";
   const isLive = !hasFaceSrc;
