@@ -7,6 +7,16 @@ import { type Producto } from "../types/producto";
 import { TRY_ON_CONFIG } from "../config/tryOn";
 import { normalizeImage } from "@/lib/normalizeImage";
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("TIMEOUT")), ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
 interface ModalProbadorProps {
   producto: Producto;
   onClose: () => void;
@@ -45,10 +55,17 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
   }, [stream]);
 
   const guardarYContinuar = async (fotoUrl: string) => {
-    sessionStorage.setItem(TRY_ON_CONFIG.overlay.storageKey, JSON.stringify({
-      fotoUrl,
-      producto: { ...producto, image: imagenProductoUrl },
-    }));
+    try {
+      sessionStorage.setItem(TRY_ON_CONFIG.overlay.storageKey, JSON.stringify({
+        fotoUrl,
+        producto: { ...producto, image: imagenProductoUrl },
+      }));
+    } catch {
+      setError("No se pudo guardar la foto. Intenta con una imagen más pequeña.");
+      setStatus("idle");
+      setCargando(false);
+      return;
+    }
     setCargando(true);
     setTimeout(() => router.push(`/probador?productoId=${encodeURIComponent(producto.id)}`), 2500);
   };
@@ -74,10 +91,10 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
       }
 
       // Normalizar a 1024×1024 cuadrado
-      const result = await normalizeImage(file, 1024);
+      const result = await withTimeout(normalizeImage(file, 1024), 15000);
 
       // Convertir blob a data URL para sessionStorage
-      const dataUrl = await blobToDataUrl(result.blob);
+      const dataUrl = await withTimeout(blobToDataUrl(result.blob), 10000);
       setFotoPreview(dataUrl);
       setStatus("loading");
       guardarYContinuar(dataUrl);
@@ -144,17 +161,17 @@ export default function ModalProbador({ producto, onClose }: ModalProbadorProps)
       }
 
       try {
-        // Crear File desde el blob para usar normalizeImage
         const file = new File([blob], "camera-capture.jpg", { type: "image/jpeg" });
-        const result = await normalizeImage(file, 1024);
-
-        const dataUrl = await blobToDataUrl(result.blob);
+        const result = await withTimeout(normalizeImage(file, 1024), 15000);
+        const dataUrl = await withTimeout(blobToDataUrl(result.blob), 10000);
         setFotoPreview(dataUrl);
         detenerVideo();
         setStatus("loading");
         guardarYContinuar(dataUrl);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Error al procesar la foto.";
+        const msg = e instanceof Error && e.message === "TIMEOUT"
+          ? "El procesamiento tardó demasiado. Intenta de nuevo."
+          : e instanceof Error ? e.message : "Error al procesar la foto.";
         setError(msg);
         setStatus("idle");
       }
