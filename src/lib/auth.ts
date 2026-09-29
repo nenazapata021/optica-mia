@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma"
 import { verifyPassword, isLegacyPasswordHash } from "@/lib/userAuth"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   adapter: PrismaAdapter(prisma),
   providers: [
     Credentials({

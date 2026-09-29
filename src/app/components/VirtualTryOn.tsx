@@ -571,13 +571,13 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
             autoPlay
             muted
             playsInline
-            className="absolute inset-0 h-full w-full -scale-x-100 object-cover"
+            className="hidden"
           />
         )}
 
         <canvas
           ref={canvasRef}
-          className="absolute inset-0 h-full w-full object-contain"
+          className="absolute inset-0 h-full w-full"
         />
 
         {busy && (
