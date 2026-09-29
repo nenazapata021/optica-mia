@@ -8,7 +8,7 @@ FROM base AS deps
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 FROM base AS builder
 ARG AUTH_URL
@@ -21,9 +21,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 ENV AUTH_URL=${AUTH_URL:-http://localhost:3000}
-ENV AUTH_SECRET=${AUTH_SECRET}
+ENV AUTH_SECRET=${AUTH_SECRET:-placeholder-secret-for-build}
 ENV NEXTAUTH_URL=${NEXTAUTH_URL:-${AUTH_URL:-http://localhost:3000}}
-ENV NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-${AUTH_SECRET}}
+ENV NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-${AUTH_SECRET:-placeholder-secret-for-build}}
 RUN npx prisma generate
 RUN npm run build
 
