@@ -59,8 +59,11 @@ let landmarkerCacheVideo: { landmarker: unknown; delegate: "GPU" | "CPU" } | nul
 let landmarkerCacheImage: { landmarker: unknown; delegate: "GPU" | "CPU" } | null = null;
 
 async function createLandmarker(runningMode: "VIDEO" | "IMAGE", delegate: "GPU" | "CPU") {
+  console.log("[Probador] Iniciando carga de MediaPipe:", { runningMode, delegate, basePath: TRY_ON_CONFIG.faceLandmarker.basePath });
   const vision = await import("@mediapipe/tasks-vision");
+  console.log("[Probador] tasks-vision importado correctamente");
   const fileset = await vision.FilesetResolver.forVisionTasks(TRY_ON_CONFIG.faceLandmarker.basePath);
+  console.log("[Probador] FilesetResolver creado");
   return vision.FaceLandmarker.createFromOptions(fileset, {
     baseOptions: { modelAssetPath: TRY_ON_CONFIG.faceLandmarker.modelUrl, delegate },
     runningMode,
@@ -153,13 +156,16 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
     if (!faceImg || !glassesImg) return;
 
     setStatus("cargando_modelo");
+    console.log("[Probador] Iniciando detección estática de rostro");
     try {
       const { landmarker } = await loadFaceLandmarker("IMAGE");
       if (!mountedRef.current) return;
       landmarkerRef.current = landmarker;
+      console.log("[Probador] Modelo IMAGE cargado, detectando rostro...");
 
       const result = (landmarker as { detect: (img: HTMLImageElement) => { faceLandmarks?: { x: number; y: number; z: number }[][] } }).detect(faceImg);
       const landmarks = result.faceLandmarks?.[0];
+      console.log("[Probador] Detección estática completada, landmarks:", landmarks?.length ?? 0);
       if (!landmarks || landmarks.length < 478) {
         setStatus("idle");
         setError(TRY_ON_CONFIG.messages.noFace);
@@ -196,7 +202,8 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
       setIsFaceDetected(true);
       hasFaceRef.current = true;
       setStatus("idle");
-    } catch {
+    } catch (err) {
+      console.error("[Probador] Error en detección estática:", err);
       if (!mountedRef.current) return;
       setStatus("idle");
       setError(TRY_ON_CONFIG.messages.detectionError);
@@ -225,6 +232,9 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
     }
 
     frameCountRef.current += 1;
+    if (frameCountRef.current === 1) {
+      console.log("[Probador] Primer frame de video procesado");
+    }
     if (delegateRef.current === "CPU" && frameCountRef.current % TRY_ON_CONFIG.cpuThrottleDivisor !== 0) {
       scheduleNextFrame(video, tickRef.current!, rafRef);
       return;
@@ -245,6 +255,10 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
         }
         scheduleNextFrame(video, tickRef.current!, rafRef);
         return;
+      }
+
+      if (frameCountRef.current % 30 === 0) {
+        console.log("[Probador] Rostro detectado, landmarks:", landmarks.length);
       }
 
       lastSeenAtRef.current = now;
@@ -322,7 +336,9 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
       smoothedRef.current = { x: sx, y: sy, widthPx: sw, rollDeg: sRoll, yawDeg: sYaw, pitchDeg: sPitch };
 
       setGlassesTransform({ x: sx, y: sy, widthPx: sw, rollDeg: sRoll, yawDeg: sYaw, pitchDeg: sPitch });
-    } catch { /* frame transients */ }
+    } catch (err) {
+      console.error("[Probador] Error en tick:", err);
+    }
 
     scheduleNextFrame(video, tickRef.current!, rafRef);
   }, [scaleMultiplier]);
@@ -357,14 +373,17 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
 
     setError(null);
     setStatus("cargando_modelo");
+    console.log("[Probador] Estado: cargando_modelo");
 
     try {
       const { delegate } = await loadFaceLandmarker();
       if (!mountedRef.current) { startingRef.current = false; return; }
       delegateRef.current = delegate;
+      console.log("[Probador] Modelo cargado, delegate:", delegate);
     } catch (err) {
       startingRef.current = false;
       setStatus("error");
+      console.error("[Probador] Error cargando modelo:", err);
       if (err instanceof Error && err.message === "MODEL_LOAD_TIMEOUT") {
         setError(TRY_ON_CONFIG.messages.modelTimeout);
       } else {
@@ -374,6 +393,7 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
     }
 
     setStatus("pidiendo_permiso");
+    console.log("[Probador] Estado: pidiendo_permiso");
     let stream: MediaStream;
     try {
       stream = await withTimeout(
@@ -384,9 +404,11 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
         TRY_ON_CONFIG.timeouts.cameraPermission,
         "CAMERA_PERMISSION_TIMEOUT",
       );
+      console.log("[Probador] Cámara activada, stream obtenido");
     } catch (err) {
       startingRef.current = false;
       setStatus("error");
+      console.error("[Probador] Error con cámara:", err);
       if (err instanceof Error && err.message === "CAMERA_PERMISSION_TIMEOUT") {
         setError(TRY_ON_CONFIG.messages.cameraTimeout);
         return;
@@ -456,6 +478,7 @@ export default function VirtualTryOn({ glassesFrontalImageUrl, faceSrc, scaleMul
     setStatus("running");
     setIsFaceDetected(false);
     runningRef.current = true;
+    console.log("[Probador] Estado: running, iniciando detección");
     if (videoRef.current) {
       scheduleNextFrame(videoRef.current, tickRef.current!, rafRef);
     }

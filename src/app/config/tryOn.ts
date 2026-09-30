@@ -1,7 +1,7 @@
 export const TRY_ON_CONFIG = {
   faceLandmarker: {
     modelUrl: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task",
-    basePath: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm",
+    basePath: "/mediapipe/wasm",
     runningMode: "VIDEO" as const,
     minFaceDetectionConfidence: 0.5,
     minFacePresenceConfidence: 0.5,

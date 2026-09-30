@@ -40,6 +40,8 @@ const nextConfig: NextConfig = {
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
+              "worker-src 'self' blob: https://cdn.jsdelivr.net https://storage.googleapis.com",
+              "child-src 'self' blob: https://cdn.jsdelivr.net https://storage.googleapis.com",
             ].join("; "),
           },
         ],
