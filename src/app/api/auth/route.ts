@@ -29,9 +29,10 @@ export async function POST(request: Request) {
 
   const token = signAdminToken(email);
   const res = NextResponse.json({ ok: true });
+  const forceSecure = process.env.ADMIN_COOKIE_SECURE !== "false";
   res.cookies.set(ADMIN_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production" && forceSecure,
     sameSite: "strict",
     path: "/",
     maxAge: 60 * 60 * 8, // 8h

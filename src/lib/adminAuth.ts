@@ -32,7 +32,11 @@ export function isAdminRequest(req: NextRequest | Request): boolean {
   // @ts-ignore
   const cookie = (req as NextRequest).cookies?.get?.(ADMIN_COOKIE)?.value || (req.headers as unknown as { get: (k:string)=>string|null })?.get?.("cookie")?.match(new RegExp(`${ADMIN_COOKIE}=([^;]+)`))?.[1];
   if (!cookie) return false;
-  return verifyAdminToken(decodeURIComponent(cookie));
+  try {
+    return verifyAdminToken(decodeURIComponent(cookie));
+  } catch {
+    return false;
+  }
 }
 
 export const ADMIN_COOKIE_NAME = ADMIN_COOKIE;

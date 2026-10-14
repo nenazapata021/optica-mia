@@ -4,7 +4,8 @@ import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { productosLentes, productosGafasSol } from "../data/productos";
 import { toast } from "sonner";
-import { ShoppingCart, Package, Sun, Eye, Trash2, BarChart3, Table, ClipboardList, Mail, LogOut, Plus } from "lucide-react";
+import { ShoppingCart, Package, Trash2, BarChart3, Table, ClipboardList, Mail, LogOut, Plus, AlertTriangle, RefreshCw } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import Logo from "../components/Logo";
 import AddProductModal from "./AddProductModal";
 
@@ -32,11 +33,28 @@ interface DbOrder {
 
 type Tab = "stats" | "products" | "orders";
 
+interface CategoryStat {
+  category: string;
+  stock: number;
+  productCount: number;
+  avgPrice: number;
+  sales: number;
+}
+
+interface ProductStats {
+  totalProducts: number;
+  totalStock: number;
+  lowStockCount: number;
+  byCategory: CategoryStat[];
+}
+
 const NAV_ITEMS: { key: Tab; label: string; icon: typeof BarChart3 }[] = [
   { key: "stats", label: "Estadísticas", icon: BarChart3 },
   { key: "products", label: "Productos", icon: Table },
   { key: "orders", label: "Pedidos", icon: ClipboardList },
 ];
+
+const CHART_COLORS = ["#008294", "#D4AF37", "#6E2A35", "#A5673F", "#4A7C59", "#7B6D8D"];
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -57,6 +75,9 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [productStats, setProductStats] = useState<ProductStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState("");
 
   useEffect(() => {
     // Lectura de sessionStorage en montaje; evita mismatch de hidratación SSR
@@ -65,6 +86,32 @@ export default function AdminDashboard() {
       setAuthed(true);
     }
   }, []);
+
+  const fetchStats = async () => {
+    setStatsLoading(true);
+    setStatsError("");
+    try {
+      const res = await fetch("/api/admin/stats/products", { cache: "no-store", credentials: "include" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Error al cargar estadísticas");
+      }
+      const data: ProductStats = await res.json();
+      setProductStats(data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error de conexión";
+      setStatsError(message);
+      setProductStats(null);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (authed && tab === "stats" && !productStats && !statsLoading && !statsError) {
+      fetchStats();
+    }
+  }, [authed, tab, productStats, statsLoading, statsError]);
 
   // Polling para obtener órdenes en tiempo real cada 10 segundos
   useEffect(() => {
@@ -75,7 +122,11 @@ export default function AdminDashboard() {
         const res = await fetch("/api/orders", {
           cache: "no-store",
         });
-        if (!res.ok) throw new Error("Error al cargar órdenes");
+        if (!res.ok) {
+          toast.error("No se pueden cargar los pedidos");
+          console.error("Error API orders:", res.statusText);
+          return;
+        }
         const data = await res.json();
         if (!cancelled) setOrders(data.orders);
         if (!cancelled) setLastUpdated(new Date());
@@ -260,33 +311,6 @@ function hexToColorName(hex: string): string {
 
 const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
 
-  const stats = [
-    {
-      label: "Total Productos",
-      value: allProducts.length,
-      icon: Package,
-      color: "bg-[#008294]",
-    },
-    {
-      label: "Lentes",
-      value: allProducts.filter((p) => p.categoria === "lentes").length,
-      icon: Eye,
-      color: "bg-[#D4AF37]",
-    },
-    {
-      label: "Gafas de Sol",
-      value: allProducts.filter((p) => p.categoria === "sol").length,
-      icon: Sun,
-      color: "bg-amber-600",
-    },
-    {
-      label: "Pedidos",
-      value: orders.length,
-      icon: ShoppingCart,
-      color: "bg-emerald-600",
-    },
-  ];
-
   return (
     <div className="flex min-h-screen bg-gray-50">
       {!authed ? (
@@ -402,18 +426,126 @@ const formatPrice = (n: number) => `$${n.toLocaleString("es-CO")}`;
 
         <div className="mx-auto max-w-7xl px-4 py-6">
           {tab === "stats" && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {stats.map((s) => (
-                <div key={s.label} className="flex items-center gap-4 rounded-xl bg-white p-5 shadow-sm">
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${s.color} text-white`}>
-                    <s.icon size={24} />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">{s.value}</p>
-                    <p className="text-sm text-gray-500">{s.label}</p>
+            <div className="space-y-6">
+              {statsLoading && (
+                <div className="flex items-center justify-center rounded-xl bg-white p-12 shadow-sm">
+                  <div className="flex flex-col items-center gap-3">
+                    <RefreshCw size={32} className="animate-spin text-[#008294]" />
+                    <p className="text-sm text-gray-500">Cargando estadísticas...</p>
                   </div>
                 </div>
-              ))}
+              )}
+
+              {statsError && !statsLoading && (
+                <div className="flex flex-col items-center gap-4 rounded-xl bg-white p-12 shadow-sm">
+                  <AlertTriangle size={48} className="text-red-400" />
+                  <p className="text-lg font-medium text-gray-700">Error al cargar estadísticas</p>
+                  <p className="text-sm text-gray-500">{statsError}</p>
+                  <button
+                    onClick={fetchStats}
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#008294] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#005f6b]"
+                  >
+                    <RefreshCw size={16} />
+                    Reintentar
+                  </button>
+                </div>
+              )}
+
+              {!statsLoading && !statsError && productStats && (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="flex items-center gap-4 rounded-xl bg-white p-5 shadow-sm">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#008294] text-white">
+                        <Package size={24} />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-gray-900">{productStats.totalProducts}</p>
+                        <p className="text-sm text-gray-500">Total Productos</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 rounded-xl bg-white p-5 shadow-sm">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#D4AF37] text-white">
+                        <BarChart3 size={24} />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-gray-900">{productStats.totalStock}</p>
+                        <p className="text-sm text-gray-500">Stock Total</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 rounded-xl bg-white p-5 shadow-sm">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-500 text-white">
+                        <AlertTriangle size={24} />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-gray-900">{productStats.lowStockCount}</p>
+                        <p className="text-sm text-gray-500">Stock Bajo (≤5)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {productStats.byCategory.length === 0 ? (
+                    <div className="rounded-xl bg-white p-12 text-center shadow-sm">
+                      <Package size={48} className="mx-auto mb-3 text-gray-300" />
+                      <p className="text-lg font-medium text-gray-500">No hay productos registrados</p>
+                      <p className="text-sm text-gray-400">Los datos aparecerán aquí cuando agregues productos.</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      <div className="rounded-xl bg-white p-6 shadow-sm">
+                        <h3 className="mb-4 text-lg font-semibold text-gray-900">Stock por Categoría</h3>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={productStats.byCategory}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis dataKey="category" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <Tooltip
+                              formatter={(value) => [`${value ?? 0} unidades`, "Stock"]}
+                              contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb" }}
+                            />
+                            <Bar dataKey="stock" fill="#008294" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      <div className="rounded-xl bg-white p-6 shadow-sm">
+                        <h3 className="mb-4 text-lg font-semibold text-gray-900">Ventas por Categoría</h3>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <PieChart>
+                            <Pie
+                              data={productStats.byCategory}
+                              dataKey="sales"
+                              nameKey="category"
+                              cx="50%"
+                              cy="50%"
+                              outerRadius={100}
+                              label={({ category, percent }: { category?: string; percent?: number }) =>
+                                `${category ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`
+                              }
+                            >
+                              {productStats.byCategory.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(value) => [`$${(value ?? 0).toLocaleString("es-CO")}`, "Ventas"]}
+                              contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb" }}
+                            />
+                            <Legend />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!statsLoading && !statsError && !productStats && (
+                <div className="rounded-xl bg-white p-12 text-center shadow-sm">
+                  <BarChart3 size={48} className="mx-auto mb-3 text-gray-300" />
+                  <p className="text-lg font-medium text-gray-500">Sin datos disponibles</p>
+                  <p className="text-sm text-gray-400">No se encontraron estadísticas de productos.</p>
+                </div>
+              )}
             </div>
           )}
 

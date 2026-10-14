@@ -1,0 +1,1 @@
+ALTER TABLE public."Order" ADD COLUMN IF NOT EXISTS customerName TEXT NOT NULL DEFAULT 'Seed Customer';
